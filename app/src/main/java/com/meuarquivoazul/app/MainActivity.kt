@@ -277,28 +277,7 @@ private fun TelaPrincipal(resumeVersion: Int) {
                 }
             }
         } else {
-            // Abas separadas no estilo da navegação do WhatsApp.
-            Row(Modifier.fillMaxWidth().background(Azul)) {
-                listOf("Conversas", "Status", "Mídias").forEach { nome ->
-                    Column(
-                        Modifier.weight(1f).clickable { aba = nome }.padding(top = 12.dp, bottom = 0.dp),
-                        horizontalAlignment = Alignment.CenterHorizontally
-                    ) {
-                        androidx.compose.material3.Text(
-                            nome.uppercase(),
-                            color = if (aba == nome) Color.White else Color.White.copy(alpha = 0.72f),
-                            fontSize = 13.sp,
-                            fontWeight = if (aba == nome) FontWeight.Bold else FontWeight.Medium
-                        )
-                        Spacer(
-                            Modifier.padding(top = 10.dp).fillMaxWidth(0.72f).height(3.dp)
-                                .background(if (aba == nome) Color.White else Color.Transparent, RoundedCornerShape(topStart = 3.dp, topEnd = 3.dp))
-                        )
-                    }
-                }
-            }
-
-            if (aba == "Conversas") {
+            // A navegação principal fica fixa no rodapé.\n            if (aba == "Conversas") {
                 if (contatos.isEmpty()) {
                     Column(
                         Modifier.fillMaxWidth().padding(horizontal = 28.dp, vertical = 72.dp),
@@ -472,14 +451,48 @@ private fun TelaPrincipal(resumeVersion: Int) {
                                 Column(Modifier.weight(1f).padding(start = 12.dp)) {
                                     androidx.compose.material3.Text(media.name, color = Color(0xFF182230),
                                         fontSize = 13.sp, maxLines = 2)
-                                    androidx.compose.material3.Text(if (media.isVideo) "Vídeo salvo" else "Foto salva",
+                                    androidx.compose.material3.Text(if (media.isVideo) "Vídeo disponível para baixar" else "Foto disponível para baixar",
                                         color = Color(0xFF667085), fontSize = 11.sp)
+                                }
+                                IconButton(onClick = {
+                                    avisoMidias = if (salvarNaGaleria(context, media))
+                                        "Mídia salva na galeria do aparelho."
+                                    else "Não foi possível salvar esta mídia."
+                                }) {
+                                    Icon(Icons.Default.Download, contentDescription = "Baixar mídia", tint = Azul)
                                 }
                             }
                         }
                     }
                 }
             }
+        if (!mostrarConfiguracoes && contato == null && statusSelecionado == null) {
+            Row(
+                Modifier.fillMaxWidth().background(Color.White)
+                    .padding(horizontal = 8.dp, vertical = 8.dp),
+                horizontalArrangement = Arrangement.SpaceAround,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                listOf("Conversas", "Status", "Mídias").forEach { nome ->
+                    Column(
+                        Modifier.weight(1f).clickable { aba = nome }.padding(vertical = 5.dp),
+                        horizontalAlignment = Alignment.CenterHorizontally
+                    ) {
+                        androidx.compose.material3.Text(
+                            when (nome) { "Conversas" -> "▤"; "Status" -> "◉"; else -> "▧" },
+                            color = if (aba == nome) Azul else Color(0xFF667085),
+                            fontSize = 21.sp
+                        )
+                        androidx.compose.material3.Text(
+                            when (nome) { "Conversas" -> "Conversas"; "Status" -> "Atualizações"; else -> "Mídias" },
+                            color = if (aba == nome) Azul else Color(0xFF667085),
+                            fontSize = 11.sp,
+                            fontWeight = if (aba == nome) FontWeight.Bold else FontWeight.Medium
+                        )
+                    }
+                }
+            }
+        }
         }
     }
 }
