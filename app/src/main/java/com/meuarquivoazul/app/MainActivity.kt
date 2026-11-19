@@ -302,21 +302,65 @@ private fun TelaPrincipal(resumeVersion: Int) {
                     LazyColumn {
                         items(contatos) { nome ->
                             val ultima = mensagens.first { it.sender == nome }
+                            val agora = java.util.Calendar.getInstance()
+                            val dataMensagem = java.util.Calendar.getInstance().apply { timeInMillis = ultima.timestamp }
+                            val mesmoDia = agora.get(java.util.Calendar.YEAR) == dataMensagem.get(java.util.Calendar.YEAR) &&
+                                agora.get(java.util.Calendar.DAY_OF_YEAR) == dataMensagem.get(java.util.Calendar.DAY_OF_YEAR)
+                            val ontem = java.util.Calendar.getInstance().apply { add(java.util.Calendar.DAY_OF_YEAR, -1) }
+                            val foiOntem = ontem.get(java.util.Calendar.YEAR) == dataMensagem.get(java.util.Calendar.YEAR) &&
+                                ontem.get(java.util.Calendar.DAY_OF_YEAR) == dataMensagem.get(java.util.Calendar.DAY_OF_YEAR)
+                            val horario = when {
+                                mesmoDia -> SimpleDateFormat("HH:mm", Locale("pt", "BR")).format(Date(ultima.timestamp))
+                                foiOntem -> "Ontem"
+                                else -> SimpleDateFormat("dd/MM/yy", Locale("pt", "BR")).format(Date(ultima.timestamp))
+                            }
                             Row(
-                                Modifier.fillMaxWidth().clickable { contato = nome }.padding(horizontal = 16.dp, vertical = 12.dp),
+                                Modifier.fillMaxWidth()
+                                    .clickable { contato = nome }
+                                    .padding(horizontal = 16.dp, vertical = 10.dp),
                                 verticalAlignment = Alignment.CenterVertically
                             ) {
-                                Box(Modifier.size(54.dp).background(AzulClaro, CircleShape), contentAlignment = Alignment.Center) {
-                                    androidx.compose.material3.Text(nome.take(1).uppercase(), color = Azul, fontWeight = FontWeight.Bold, fontSize = 19.sp)
+                                Box(
+                                    Modifier.size(58.dp).background(AzulClaro, CircleShape),
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    androidx.compose.material3.Text(
+                                        nome.trim().take(1).uppercase(),
+                                        color = Azul,
+                                        fontWeight = FontWeight.Bold,
+                                        fontSize = 20.sp
+                                    )
                                 }
-                                Column(Modifier.weight(1f).padding(start = 12.dp)) {
-                                    androidx.compose.material3.Text(nome, fontWeight = FontWeight.SemiBold, color = Color(0xFF182230), fontSize = 17.sp)
-                                    androidx.compose.material3.Text(ultima.message, color = Color(0xFF667085), fontSize = 14.sp, maxLines = 1)
+                                Column(
+                                    Modifier.weight(1f).padding(start = 13.dp),
+                                    verticalArrangement = Arrangement.Center
+                                ) {
+                                    Row(
+                                        Modifier.fillMaxWidth(),
+                                        verticalAlignment = Alignment.CenterVertically
+                                    ) {
+                                        androidx.compose.material3.Text(
+                                            nome,
+                                            modifier = Modifier.weight(1f),
+                                            fontWeight = FontWeight.SemiBold,
+                                            color = Color(0xFF111827),
+                                            fontSize = 17.sp,
+                                            maxLines = 1
+                                        )
+                                        androidx.compose.material3.Text(
+                                            horario,
+                                            color = if (mesmoDia) Color(0xFF269B68) else Color(0xFF667085),
+                                            fontSize = 12.sp
+                                        )
+                                    }
+                                    androidx.compose.material3.Text(
+                                        ultima.message,
+                                        color = Color(0xFF667085),
+                                        fontSize = 14.sp,
+                                        maxLines = 1,
+                                        modifier = Modifier.padding(top = 4.dp)
+                                    )
                                 }
-                                androidx.compose.material3.Text(
-                                    mensagens.count { it.sender == nome }.toString(),
-                                    color = Azul, fontSize = 12.sp
-                                )
                             }
                         }
                     }
