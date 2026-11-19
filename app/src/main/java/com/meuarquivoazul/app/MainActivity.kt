@@ -340,7 +340,19 @@ private fun TelaPrincipal() {
                                         AndroidView(
                                             factory = { ctx -> ImageView(ctx).apply {
                                                 scaleType = ImageView.ScaleType.CENTER_CROP
-                                                setImageURI(Uri.fromFile(status.file))
+                                                if (status.isVideo) {
+                                                    val retriever = android.media.MediaMetadataRetriever()
+                                                    try {
+                                                        retriever.setDataSource(status.file.absolutePath)
+                                                        setImageBitmap(retriever.getFrameAtTime(0))
+                                                    } catch (_: Exception) {
+                                                        setImageResource(android.R.drawable.ic_media_play)
+                                                    } finally {
+                                                        try { retriever.release() } catch (_: Exception) { }
+                                                    }
+                                                } else {
+                                                    setImageURI(Uri.fromFile(status.file))
+                                                }
                                             } },
                                             modifier = Modifier.fillMaxSize()
                                         )
