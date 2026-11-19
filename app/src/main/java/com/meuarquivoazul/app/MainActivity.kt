@@ -108,11 +108,10 @@ private fun TelaConversas() {
             verticalAlignment = Alignment.CenterVertically
         ) {
             filtros.forEach { item ->
-                val selecionado = filtro == item
                 Box(
                     Modifier.padding(end = 13.dp).clip(CircleShape)
-                        .background(if (selecionado) VerdeClaro else Color.White)
-                        .border(1.5.dp, if (selecionado) Color(0xFFB8DDBB) else Color(0xFFD5D7D8), CircleShape)
+                        .background(VerdeClaro)
+                        .border(1.5.dp, Color(0xFFB8DDBB), CircleShape)
                         .padding(horizontal = 19.dp, vertical = 11.dp),
                     contentAlignment = Alignment.Center
                 ) {
