@@ -16,11 +16,16 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.grid.GridCells
+import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
+import androidx.compose.foundation.lazy.grid.items as gridItems
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.Download
+import androidx.compose.material.icons.filled.ChevronLeft
+import androidx.compose.material.icons.filled.ChevronRight
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -61,6 +66,7 @@ private fun TelaPrincipal() {
     val context = LocalContext.current
     var mensagens by remember { mutableStateOf(ArchiveStore.all(context)) }
     var midias by remember { mutableStateOf(MediaArchive.all(context)) }
+    val statusSalvos = midias.filter { it.file.name.startsWith("status_") }.sortedByDescending { it.file.lastModified() }
     var avisoMidias by remember { mutableStateOf("Importe as mídias comuns do WhatsApp que o Android disponibilizar.") }
     val permissaoMidia = remember {
         if (Build.VERSION.SDK_INT >= 33) arrayOf("android.permission.READ_MEDIA_IMAGES", "android.permission.READ_MEDIA_VIDEO")
@@ -159,6 +165,7 @@ private fun TelaPrincipal() {
             }
         } else if (statusSelecionado != null) {
             val item = statusSelecionado!!
+            val indice = statusSalvos.indexOfFirst { it.file.absolutePath == item.file.absolutePath }
             Box(Modifier.fillMaxSize().background(Color.Black)) {
                 if (item.isVideo) {
                     AndroidView(
@@ -177,12 +184,34 @@ private fun TelaPrincipal() {
                         modifier = Modifier.fillMaxSize()
                     )
                 }
+                Row(Modifier.align(Alignment.TopCenter).fillMaxWidth().padding(horizontal = 12.dp, vertical = 18.dp),
+                    horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                    statusSalvos.forEachIndexed { i, _ ->
+                        Box(Modifier.weight(1f).height(3.dp).background(
+                            if (i <= indice) Color.White else Color.White.copy(alpha = 0.35f),
+                            RoundedCornerShape(4.dp)))
+                    }
+                }
                 IconButton(onClick = { avisoMidias = "Mídia já está salva no Meu Arquivo Azul." },
-                    modifier = Modifier.align(Alignment.TopEnd).padding(12.dp)) {
+                    modifier = Modifier.align(Alignment.TopEnd).padding(top = 28.dp, end = 12.dp)) {
                     Icon(Icons.Default.Download, contentDescription = "Baixar status", tint = Color.White)
                 }
+                if (indice > 0) {
+                    IconButton(onClick = { statusSelecionado = statusSalvos[indice - 1] },
+                        modifier = Modifier.align(Alignment.CenterStart).size(56.dp)) {
+                        Icon(Icons.Default.ChevronLeft, contentDescription = "Status anterior",
+                            tint = Color.White, modifier = Modifier.size(42.dp))
+                    }
+                }
+                if (indice >= 0 && indice < statusSalvos.lastIndex) {
+                    IconButton(onClick = { statusSelecionado = statusSalvos[indice + 1] },
+                        modifier = Modifier.align(Alignment.CenterEnd).size(56.dp)) {
+                        Icon(Icons.Default.ChevronRight, contentDescription = "Próximo status",
+                            tint = Color.White, modifier = Modifier.size(42.dp))
+                    }
+                }
                 androidx.compose.material3.Text(
-                    "Toque no ícone de download para confirmar que a mídia está guardada",
+                    "${indice + 1} de ${statusSalvos.size} • toque nas laterais para passar",
                     color = Color.White, fontSize = 11.sp,
                     modifier = Modifier.align(Alignment.BottomCenter).padding(16.dp)
                 )
@@ -268,7 +297,6 @@ private fun TelaPrincipal() {
                     }
                 }
             } else if (aba == "Status") {
-                val statusSalvos = midias.filter { it.file.name.startsWith("status_") }
                 Column(Modifier.fillMaxSize()) {
                     Row(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 12.dp),
                         verticalAlignment = Alignment.CenterVertically) {
@@ -295,23 +323,40 @@ private fun TelaPrincipal() {
                             }
                         }
                     } else {
-                        LazyColumn(contentPadding = PaddingValues(bottom = 16.dp)) {
-                            items(statusSalvos) { status ->
-                                Row(Modifier.fillMaxWidth().clickable { statusSelecionado = status }
-                                    .padding(horizontal = 16.dp, vertical = 10.dp),
-                                    verticalAlignment = Alignment.CenterVertically) {
-                                    Box(Modifier.size(52.dp).background(AzulClaro, RoundedCornerShape(12.dp)),
-                                        contentAlignment = Alignment.Center) {
-                                        androidx.compose.material3.Text(if (status.isVideo) "▶" else "▧",
-                                            color = Azul, fontSize = 22.sp)
+                        LazyVerticalGrid(
+                            columns = GridCells.Fixed(2),
+                            contentPadding = PaddingValues(start = 12.dp, end = 12.dp, bottom = 20.dp),
+                            horizontalArrangement = Arrangement.spacedBy(10.dp),
+                            verticalArrangement = Arrangement.spacedBy(10.dp)
+                        ) {
+                            gridItems(statusSalvos) { status ->
+                                Column(
+                                    Modifier.fillMaxWidth().background(Color.White, RoundedCornerShape(14.dp))
+                                        .clickable { statusSelecionado = status }
+                                        .padding(8.dp)
+                                ) {
+                                    Box(Modifier.fillMaxWidth().height(190.dp)
+                                        .background(Color(0xFFE8EDF5), RoundedCornerShape(10.dp))) {
+                                        AndroidView(
+                                            factory = { ctx -> ImageView(ctx).apply {
+                                                scaleType = ImageView.ScaleType.CENTER_CROP
+                                                setImageURI(Uri.fromFile(status.file))
+                                            } },
+                                            modifier = Modifier.fillMaxSize()
+                                        )
+                                        if (status.isVideo) {
+                                            Box(Modifier.align(Alignment.BottomEnd).padding(7.dp)
+                                                .background(Color.Black.copy(alpha = 0.65f), CircleShape)
+                                                .padding(horizontal = 8.dp, vertical = 4.dp)) {
+                                                androidx.compose.material3.Text("▶ VÍDEO",
+                                                    color = Color.White, fontSize = 10.sp, fontWeight = FontWeight.Bold)
+                                            }
+                                        }
                                     }
-                                    Column(Modifier.weight(1f).padding(start = 12.dp)) {
-                                        androidx.compose.material3.Text(status.name, color = Color(0xFF182230),
-                                            fontWeight = FontWeight.Medium, fontSize = 13.sp, maxLines = 1)
-                                        androidx.compose.material3.Text(if (status.isVideo) "Vídeo • toque para abrir" else "Foto • toque para abrir",
-                                            color = Color(0xFF667085), fontSize = 11.sp)
-                                    }
-                                    Icon(Icons.Default.Download, contentDescription = "Mídia salva", tint = Azul)
+                                    androidx.compose.material3.Text(
+                                        status.name, color = Color(0xFF344054), fontSize = 11.sp,
+                                        maxLines = 1, modifier = Modifier.padding(top = 7.dp, start = 2.dp)
+                                    )
                                 }
                             }
                         }
