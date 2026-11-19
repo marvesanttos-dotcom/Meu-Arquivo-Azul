@@ -2,9 +2,12 @@ package com.meuarquivoazul.app
 
 import android.content.Intent
 import android.os.Bundle
+import android.os.Build
+import android.content.pm.PackageManager
 import android.provider.Settings
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -52,6 +55,18 @@ class MainActivity : ComponentActivity() {
 private fun TelaPrincipal() {
     val context = LocalContext.current
     var mensagens by remember { mutableStateOf(ArchiveStore.all(context)) }
+    var midias by remember { mutableStateOf(MediaArchive.all(context)) }
+    var avisoMidias by remember { mutableStateOf("Importe as mídias comuns do WhatsApp que o Android disponibilizar.") }
+    val permissaoMidia = remember {
+        if (Build.VERSION.SDK_INT >= 33) arrayOf("android.permission.READ_MEDIA_IMAGES", "android.permission.READ_MEDIA_VIDEO")
+        else arrayOf("android.permission.READ_EXTERNAL_STORAGE")
+    }
+    val pedirPermissao = androidx.activity.compose.rememberLauncherForActivityResult(ActivityResultContracts.RequestMultiplePermissions()) { grants ->
+        if (grants.values.any { it }) {
+            midias = MediaArchive.importAvailable(context)
+            avisoMidias = "Arquivos acessíveis copiados para o armazenamento privado do aplicativo."
+        } else avisoMidias = "Permissão não concedida. Não foi possível importar as mídias."
+    }
     var contato by remember { mutableStateOf<String?>(null) }
     var aba by remember { mutableStateOf("Conversas") }
     var mostrarConfiguracoes by remember { mutableStateOf(false) }
@@ -129,7 +144,7 @@ private fun TelaPrincipal() {
         } else {
             // Abas separadas no estilo da navegação do WhatsApp.
             Row(Modifier.fillMaxWidth().background(Azul)) {
-                listOf("Conversas", "Status").forEach { nome ->
+                listOf("Conversas", "Status", "Mídias").forEach { nome ->
                     Column(
                         Modifier.weight(1f).clickable { aba = nome }.padding(top = 12.dp, bottom = 0.dp),
                         horizontalAlignment = Alignment.CenterHorizontally
@@ -190,22 +205,59 @@ private fun TelaPrincipal() {
                         }
                     }
                 }
-            } else {
+            } else if (aba == "Status") {
                 Column(
-                    Modifier.fillMaxWidth().padding(horizontal = 28.dp, vertical = 72.dp),
+                    Modifier.fillMaxWidth().padding(horizontal = 28.dp, vertical = 48.dp),
                     horizontalAlignment = Alignment.CenterHorizontally
                 ) {
                     androidx.compose.material3.Text("◉", color = Azul, fontSize = 38.sp)
+                    androidx.compose.material3.Text("Status visualizados", fontWeight = FontWeight.SemiBold,
+                        color = Color(0xFF182230), modifier = Modifier.padding(top = 12.dp))
                     androidx.compose.material3.Text(
-                        "Status",
-                        fontWeight = FontWeight.SemiBold,
-                        color = Color(0xFF182230),
-                        modifier = Modifier.padding(top = 12.dp)
-                    )
-                    androidx.compose.material3.Text(
-                        "Esta área ficará separada das conversas. A importação e o arquivamento de status ainda serão implementados.",
-                        color = Color(0xFF667085), fontSize = 13.sp
-                    )
+                        "A pasta de status pode ser protegida ou ocultada pelo WhatsApp. Somente arquivos que o Android disponibilizar poderão ser copiados.",
+                        color = Color(0xFF667085), fontSize = 13.sp, modifier = Modifier.padding(top = 8.dp))
+                    Button(onClick = {
+                        pedirPermissao.launch(permissaoMidia)
+                    }, modifier = Modifier.fillMaxWidth().padding(top = 16.dp),
+                        colors = ButtonDefaults.buttonColors(containerColor = Azul)) {
+                        androidx.compose.material3.Text("Procurar status e mídias acessíveis")
+                    }
+                }
+            } else {
+                Column(Modifier.fillMaxSize().padding(16.dp)) {
+                    androidx.compose.material3.Text("Arquivo de fotos e vídeos", fontWeight = FontWeight.Bold,
+                        color = Color(0xFF182230), fontSize = 17.sp)
+                    androidx.compose.material3.Text(avisoMidias, color = Color(0xFF667085),
+                        fontSize = 12.sp, modifier = Modifier.padding(top = 6.dp, bottom = 12.dp))
+                    Button(onClick = {
+                        val granted = permissaoMidia.all {
+                            context.checkSelfPermission(it) == PackageManager.PERMISSION_GRANTED
+                        }
+                        if (granted) {
+                            midias = MediaArchive.importAvailable(context)
+                            avisoMidias = "Importação concluída. Só aparecem arquivos acessíveis ao Android."
+                        } else pedirPermissao.launch(permissaoMidia)
+                    }, modifier = Modifier.fillMaxWidth(),
+                        colors = ButtonDefaults.buttonColors(containerColor = Azul)) {
+                        androidx.compose.material3.Text("Importar mídias do WhatsApp")
+                    }
+                    androidx.compose.material3.Text("${midias.size} arquivo(s) guardado(s) neste aparelho",
+                        color = Azul, fontSize = 13.sp, modifier = Modifier.padding(top = 14.dp, bottom = 8.dp))
+                    LazyColumn {
+                        items(midias) { media ->
+                            Row(Modifier.fillMaxWidth().padding(vertical = 8.dp),
+                                verticalAlignment = Alignment.CenterVertically) {
+                                androidx.compose.material3.Text(if (media.isVideo) "▶" else "▧",
+                                    color = Azul, fontSize = 22.sp)
+                                Column(Modifier.weight(1f).padding(start = 12.dp)) {
+                                    androidx.compose.material3.Text(media.name, color = Color(0xFF182230),
+                                        fontSize = 13.sp, maxLines = 2)
+                                    androidx.compose.material3.Text(if (media.isVideo) "Vídeo salvo" else "Foto salva",
+                                        color = Color(0xFF667085), fontSize = 11.sp)
+                                }
+                            }
+                        }
+                    }
                 }
             }
         }
