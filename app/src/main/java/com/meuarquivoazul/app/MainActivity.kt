@@ -67,6 +67,19 @@ private fun TelaPrincipal() {
             avisoMidias = "Arquivos acessíveis copiados para o armazenamento privado do aplicativo."
         } else avisoMidias = "Permissão não concedida. Não foi possível importar as mídias."
     }
+    val escolherPastaStatus = androidx.activity.compose.rememberLauncherForActivityResult(ActivityResultContracts.OpenDocumentTree()) { uri ->
+        if (uri != null) {
+            try {
+                context.contentResolver.takePersistableUriPermission(
+                    uri, Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_GRANT_WRITE_URI_PERMISSION
+                )
+            } catch (_: Exception) { }
+            context.getSharedPreferences("arquivo_azul", android.content.Context.MODE_PRIVATE)
+                .edit().putString("status_tree_uri", uri.toString()).apply()
+            midias = MediaArchive.importStatusTree(context, uri)
+            avisoMidias = "Pasta selecionada. Foram copiadas as fotos e os vídeos acessíveis."
+        }
+    }
     var contato by remember { mutableStateOf<String?>(null) }
     var aba by remember { mutableStateOf("Conversas") }
     var mostrarConfiguracoes by remember { mutableStateOf(false) }
@@ -77,6 +90,12 @@ private fun TelaPrincipal() {
             context.checkSelfPermission(it) == PackageManager.PERMISSION_GRANTED
         }
         if (autorizado) midias = MediaArchive.importAvailable(context)
+        val statusUri = context.getSharedPreferences("arquivo_azul", android.content.Context.MODE_PRIVATE)
+            .getString("status_tree_uri", null)
+        if (statusUri != null) {
+            try { midias = MediaArchive.importStatusTree(context, android.net.Uri.parse(statusUri)) }
+            catch (_: Exception) { }
+        }
     }
 
     Column(Modifier.fillMaxSize().background(Fundo)) {
@@ -223,11 +242,15 @@ private fun TelaPrincipal() {
                         "A pasta de status pode ser protegida ou ocultada pelo WhatsApp. Somente arquivos que o Android disponibilizar poderão ser copiados.",
                         color = Color(0xFF667085), fontSize = 13.sp, modifier = Modifier.padding(top = 8.dp))
                     Button(onClick = {
-                        pedirPermissao.launch(permissaoMidia)
+                        escolherPastaStatus.launch(null)
                     }, modifier = Modifier.fillMaxWidth().padding(top = 16.dp),
                         colors = ButtonDefaults.buttonColors(containerColor = Azul)) {
-                        androidx.compose.material3.Text("Procurar status e mídias acessíveis")
+                        androidx.compose.material3.Text("Selecionar pasta de Status do WhatsApp")
                     }
+                    androidx.compose.material3.Text(
+                        "No seletor do Android, abra Android/media/com.whatsapp/WhatsApp/Media e escolha .Statuses. Se a pasta não aparecer, ative ‘mostrar arquivos ocultos’ no seletor/gerenciador de arquivos.",
+                        color = Color(0xFF667085), fontSize = 11.sp, modifier = Modifier.padding(top = 10.dp)
+                    )
                 }
             } else {
                 Column(Modifier.fillMaxSize().padding(16.dp)) {
