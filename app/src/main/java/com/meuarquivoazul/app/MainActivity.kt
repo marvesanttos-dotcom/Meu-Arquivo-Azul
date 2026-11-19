@@ -51,7 +51,7 @@ import java.util.Locale
 
 private val Azul = Color(0xFF2563EB)
 private val AzulClaro = Color(0xFFEAF1FF)
-private val Fundo = Color(0xFFF7F9FC)
+private val Fundo = Color(0xFFFFFFFF)
 
 private fun salvarNaGaleria(context: android.content.Context, media: ArchivedMedia): Boolean {
     val resolver = context.contentResolver
@@ -150,14 +150,14 @@ private fun TelaPrincipal(resumeVersion: Int) {
 
     Column(Modifier.fillMaxSize().background(Fundo)) {
         Row(
-            Modifier.fillMaxWidth().background(Azul).padding(start = 16.dp, end = 6.dp, top = 8.dp, bottom = 8.dp),
+            Modifier.fillMaxWidth().background(Color.White).padding(start = 16.dp, end = 6.dp, top = 12.dp, bottom = 12.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
             if (mostrarConfiguracoes || contato != null || statusSelecionado != null) {
                 IconButton(onClick = {
                     when { mostrarConfiguracoes -> mostrarConfiguracoes = false; statusSelecionado != null -> statusSelecionado = null; else -> contato = null }
                 }) {
-                    Icon(Icons.Default.ArrowBack, contentDescription = "Voltar", tint = Color.White)
+                    Icon(Icons.Default.ArrowBack, contentDescription = "Voltar", tint = Color(0xFF111827))
                 }
             }
             androidx.compose.material3.Text(
@@ -168,13 +168,13 @@ private fun TelaPrincipal(resumeVersion: Int) {
                     else -> "Meu Arquivo Azul"
                 },
                 modifier = Modifier.weight(1f),
-                color = Color.White,
-                fontSize = 20.sp,
-                fontWeight = FontWeight.Bold
+                color = Color(0xFF111827),
+                fontSize = if (aba == "Status") 32.sp else 26.sp,
+                fontWeight = FontWeight.Normal
             )
             if (!mostrarConfiguracoes && contato == null && statusSelecionado == null) {
                 IconButton(onClick = { mostrarConfiguracoes = true }) {
-                    Icon(Icons.Default.Settings, contentDescription = "Configurações", tint = Color.White)
+                    Icon(Icons.Default.Settings, contentDescription = "Configurações", tint = Color(0xFF111827))
                 }
             }
         }
@@ -305,12 +305,12 @@ private fun TelaPrincipal(resumeVersion: Int) {
                                 Modifier.fillMaxWidth().clickable { contato = nome }.padding(horizontal = 16.dp, vertical = 12.dp),
                                 verticalAlignment = Alignment.CenterVertically
                             ) {
-                                Box(Modifier.size(50.dp).background(AzulClaro, CircleShape), contentAlignment = Alignment.Center) {
+                                Box(Modifier.size(54.dp).background(AzulClaro, CircleShape), contentAlignment = Alignment.Center) {
                                     androidx.compose.material3.Text(nome.take(1).uppercase(), color = Azul, fontWeight = FontWeight.Bold, fontSize = 19.sp)
                                 }
                                 Column(Modifier.weight(1f).padding(start = 12.dp)) {
-                                    androidx.compose.material3.Text(nome, fontWeight = FontWeight.SemiBold, color = Color(0xFF182230), fontSize = 15.sp)
-                                    androidx.compose.material3.Text(ultima.message, color = Color(0xFF667085), fontSize = 13.sp, maxLines = 1)
+                                    androidx.compose.material3.Text(nome, fontWeight = FontWeight.SemiBold, color = Color(0xFF182230), fontSize = 17.sp)
+                                    androidx.compose.material3.Text(ultima.message, color = Color(0xFF667085), fontSize = 14.sp, maxLines = 1)
                                 }
                                 androidx.compose.material3.Text(
                                     mensagens.count { it.sender == nome }.toString(),
@@ -330,7 +330,7 @@ private fun TelaPrincipal(resumeVersion: Int) {
                             "Atualizações",
                             fontWeight = FontWeight.Bold,
                             color = Color(0xFF182230),
-                            fontSize = 22.sp,
+                            fontSize = 32.sp,
                             modifier = Modifier.weight(1f)
                         )
                         androidx.compose.material3.TextButton(onClick = {
@@ -349,7 +349,7 @@ private fun TelaPrincipal(resumeVersion: Int) {
                     }
                     androidx.compose.material3.Text(
                         "Status",
-                        fontSize = 19.sp,
+                        fontSize = 22.sp,
                         fontWeight = FontWeight.Bold,
                         color = Color(0xFF182230),
                         modifier = Modifier.padding(start = 16.dp, bottom = 10.dp)
@@ -360,8 +360,8 @@ private fun TelaPrincipal(resumeVersion: Int) {
                     ) {
                         items(statusSalvos) { status ->
                             Column(
-                                Modifier.width(145.dp).height(258.dp)
-                                    .background(Color(0xFFE8EDF5), RoundedCornerShape(22.dp))
+                                Modifier.width(160.dp).height(300.dp)
+                                    .background(Color(0xFFE8EDF5), RoundedCornerShape(24.dp))
                                     .clickable { statusSelecionado = status }
                             ) {
                                 Box(Modifier.fillMaxSize()) {
@@ -474,18 +474,18 @@ private fun TelaPrincipal(resumeVersion: Int) {
                 horizontalArrangement = Arrangement.SpaceAround,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                listOf("Conversas", "Status", "Mídias").forEach { nome ->
+                listOf("Conversas", "Status").forEach { nome ->
                     Column(
                         Modifier.weight(1f).clickable { aba = nome }.padding(vertical = 5.dp),
                         horizontalAlignment = Alignment.CenterHorizontally
                     ) {
                         androidx.compose.material3.Text(
-                            when (nome) { "Conversas" -> "▤"; "Status" -> "◉"; else -> "▧" },
+                            when (nome) { "Conversas" -> "▤"; else -> "◉" },
                             color = if (aba == nome) Azul else Color(0xFF667085),
                             fontSize = 21.sp
                         )
                         androidx.compose.material3.Text(
-                            when (nome) { "Conversas" -> "Conversas"; "Status" -> "Atualizações"; else -> "Mídias" },
+                            when (nome) { "Conversas" -> "Conversas"; else -> "Atualizações" },
                             color = if (aba == nome) Azul else Color(0xFF667085),
                             fontSize = 11.sp,
                             fontWeight = if (aba == nome) FontWeight.Bold else FontWeight.Medium
