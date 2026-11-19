@@ -136,7 +136,11 @@ private fun TelaPrincipal(resumeVersion: Int) {
     var mostrarConfiguracoes by remember { mutableStateOf(false) }
     val contatos = mensagens.map { it.sender }.distinct()
     val filtradas = mensagens.filter { it.sender == contato }
+    val contagensNaoLidas = mensagens.groupBy { it.sender }
+        .mapValues { (_, itens) -> itens.sumOf { it.unreadCount.coerceAtLeast(0) } }
     LaunchedEffect(resumeVersion) {
+        // Recarrega as notificações arquivadas sempre que o usuário volta ao app.
+        mensagens = ArchiveStore.all(context)
         val autorizado = permissaoMidia.all {
             context.checkSelfPermission(it) == PackageManager.PERMISSION_GRANTED
         }
@@ -365,18 +369,19 @@ private fun TelaPrincipal(resumeVersion: Int) {
                                         modifier = Modifier.padding(top = 4.dp)
                                     )
                                 }
-                                if (ultima.unreadCount > 0) {
+                                val naoLidas = contagensNaoLidas[nome] ?: 0
+                                if (naoLidas > 0) {
                                     Box(
                                         Modifier.padding(start = 8.dp)
                                             .height(22.dp)
                                             .widthIn(min = 22.dp)
                                             .clip(CircleShape)
-                                            .background(Color(0xFF25A568))
+                                            .background(Azul)
                                             .padding(horizontal = 6.dp),
                                         contentAlignment = Alignment.Center
                                     ) {
                                         androidx.compose.material3.Text(
-                                            if (ultima.unreadCount > 99) "99+" else ultima.unreadCount.toString(),
+                                            if (naoLidas > 99) "99+" else naoLidas.toString(),
                                             color = Color.White,
                                             fontSize = 11.sp,
                                             fontWeight = FontWeight.Bold
