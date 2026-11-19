@@ -166,7 +166,7 @@ private fun TelaPrincipal(resumeVersion: Int) {
                     mostrarConfiguracoes -> "Configurações"
                     statusSelecionado != null -> "Status"
                     contato != null -> contato!!
-                    else -> "Meu Arquivo Azul"
+                    else -> "Conversas"
                 },
                 modifier = Modifier.weight(1f),
                 color = Color(0xFF111827),
@@ -510,23 +510,17 @@ private fun TelaPrincipal(resumeVersion: Int) {
                 horizontalArrangement = Arrangement.SpaceAround,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                listOf("Conversas", "Status").forEach { nome ->
-                    Column(
-                        Modifier.weight(1f).clickable { aba = nome }.padding(vertical = 5.dp),
-                        horizontalAlignment = Alignment.CenterHorizontally
-                    ) {
-                        androidx.compose.material3.Text(
-                            when (nome) { "Conversas" -> "▤"; else -> "◉" },
-                            color = if (aba == nome) Azul else Color(0xFF667085),
-                            fontSize = 21.sp
-                        )
-                        androidx.compose.material3.Text(
-                            when (nome) { "Conversas" -> "Conversas"; else -> "Atualizações" },
-                            color = if (aba == nome) Azul else Color(0xFF667085),
-                            fontSize = 11.sp,
-                            fontWeight = if (aba == nome) FontWeight.Bold else FontWeight.Medium
-                        )
-                    }
+                Column(
+                    Modifier.weight(1f).padding(vertical = 5.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally
+                ) {
+                    androidx.compose.material3.Text("▤", color = Azul, fontSize = 21.sp)
+                    androidx.compose.material3.Text(
+                        "Conversas",
+                        color = Azul,
+                        fontSize = 11.sp,
+                        fontWeight = FontWeight.Bold
+                    )
                 }
             }
         }
