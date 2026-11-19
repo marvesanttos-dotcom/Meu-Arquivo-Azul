@@ -6,6 +6,7 @@ import androidx.activity.compose.setContent
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -17,12 +18,17 @@ import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.NotificationsOff
 import androidx.compose.material.icons.filled.Send
 import androidx.compose.material.icons.filled.DonutLarge
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.Button
 import androidx.compose.material3.Icon
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.*
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -88,16 +94,74 @@ class MainActivity : ComponentActivity() {
 @Composable
 private fun TelaConversas() {
     var aba by remember { mutableStateOf("Conversas") }
+    val context = LocalContext.current
+    val preferencias = remember { context.getSharedPreferences("aparencia_app", android.content.Context.MODE_PRIVATE) }
+    var nomeApp by remember { mutableStateOf(preferencias.getString("nome_app", "WhatsApp") ?: "WhatsApp") }
+    var fraseApp by remember { mutableStateOf(preferencias.getString("frase_app", "") ?: "") }
+    var mostrarConfiguracoes by remember { mutableStateOf(false) }
+    var nomeEditado by remember { mutableStateOf(nomeApp) }
+    var fraseEditada by remember { mutableStateOf(fraseApp) }
     val filtros = listOf("Todas")
     val lista = conversasDemo
 
     Column(Modifier.fillMaxSize().background(Color.White)) {
+        if (mostrarConfiguracoes) {
+            AlertDialog(
+                onDismissRequest = { mostrarConfiguracoes = false },
+                title = { Text("Personalizar cabeçalho") },
+                text = {
+                    Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                        OutlinedTextField(
+                            value = nomeEditado,
+                            onValueChange = { nomeEditado = it },
+                            label = { Text("Nome do aplicativo") },
+                            singleLine = true
+                        )
+                        OutlinedTextField(
+                            value = fraseEditada,
+                            onValueChange = { if (it.length <= 320) fraseEditada = it },
+                            label = { Text("Frase") },
+                            supportingText = { Text("${fraseEditada.length}/320") },
+                            minLines = 2,
+                            maxLines = 4
+                        )
+                        Text("Toque e segure o nome no topo para abrir estas configurações.",
+                            color = Cinza, fontSize = 12.sp)
+                    }
+                },
+                confirmButton = {
+                    Button(onClick = {
+                        nomeApp = nomeEditado.ifBlank { "WhatsApp" }
+                        fraseApp = fraseEditada
+                        preferencias.edit().putString("nome_app", nomeApp)
+                            .putString("frase_app", fraseApp).apply()
+                        mostrarConfiguracoes = false
+                    }) { Text("Salvar") }
+                },
+                dismissButton = {
+                    TextButton(onClick = { mostrarConfiguracoes = false }) { Text("Cancelar") }
+                }
+            )
+        }
         Row(
             Modifier.fillMaxWidth().height(68.dp).padding(start = 28.dp, end = 18.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Text("WhatsApp", modifier = Modifier.weight(1f), color = Verde,
-                fontSize = 28.sp, fontWeight = FontWeight.Bold, letterSpacing = (-0.7).sp)
+            Column(Modifier.weight(1f), verticalArrangement = Arrangement.Center) {
+                Text(nomeApp, modifier = Modifier.combinedClickable(
+                    onClick = { },
+                    onLongClick = {
+                        nomeEditado = nomeApp
+                        fraseEditada = fraseApp
+                        mostrarConfiguracoes = true
+                    }
+                ), color = Verde, fontSize = 28.sp, fontWeight = FontWeight.Bold,
+                    letterSpacing = (-0.7).sp)
+                if (fraseApp.isNotBlank()) {
+                    Text(fraseApp, color = Cinza, fontSize = 11.sp,
+                        maxLines = 1, overflow = TextOverflow.Ellipsis)
+                }
+            }
             Icon(Icons.Default.MoreVert, contentDescription = "Mais opções",
                 tint = Texto, modifier = Modifier.size(27.dp))
         }
