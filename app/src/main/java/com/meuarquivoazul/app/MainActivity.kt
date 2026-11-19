@@ -6,6 +6,7 @@ import android.os.Bundle
 import android.os.Build
 import android.content.pm.PackageManager
 import android.provider.Settings
+import android.provider.MediaStore
 import android.net.Uri
 import android.widget.ImageView
 import android.widget.VideoView
