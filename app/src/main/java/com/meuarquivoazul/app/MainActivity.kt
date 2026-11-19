@@ -15,6 +15,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
@@ -51,18 +52,25 @@ private val AzulClaro = Color(0xFFEAF1FF)
 private val Fundo = Color(0xFFF7F9FC)
 
 class MainActivity : ComponentActivity() {
+    private var resumeVersion by mutableIntStateOf(0)
+
+    override fun onResume() {
+        super.onResume()
+        resumeVersion++
+    }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContent {
             MaterialTheme(colorScheme = lightColorScheme(primary = Azul, secondary = Azul, background = Fundo)) {
-                TelaPrincipal()
+                TelaPrincipal(resumeVersion)
             }
         }
     }
 }
 
 @Composable
-private fun TelaPrincipal() {
+private fun TelaPrincipal(resumeVersion: Int) {
     val context = LocalContext.current
     var mensagens by remember { mutableStateOf(ArchiveStore.all(context)) }
     var midias by remember { mutableStateOf(MediaArchive.all(context)) }
@@ -97,7 +105,7 @@ private fun TelaPrincipal() {
     var mostrarConfiguracoes by remember { mutableStateOf(false) }
     val contatos = mensagens.map { it.sender }.distinct()
     val filtradas = mensagens.filter { it.sender == contato }
-    LaunchedEffect(Unit) {
+    LaunchedEffect(resumeVersion) {
         val autorizado = permissaoMidia.all {
             context.checkSelfPermission(it) == PackageManager.PERMISSION_GRANTED
         }
@@ -298,80 +306,135 @@ private fun TelaPrincipal() {
                 }
             } else if (aba == "Status") {
                 Column(Modifier.fillMaxSize()) {
-                    Row(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 12.dp),
-                        verticalAlignment = Alignment.CenterVertically) {
-                        androidx.compose.material3.Text("Atualizações", fontWeight = FontWeight.Bold,
-                            color = Color(0xFF182230), fontSize = 17.sp, modifier = Modifier.weight(1f))
-                        androidx.compose.material3.TextButton(onClick = { escolherPastaStatus.launch(null) }) {
-                            androidx.compose.material3.Text("Procurar", color = Azul)
+                    Row(
+                        Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 14.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        androidx.compose.material3.Text(
+                            "Atualizações",
+                            fontWeight = FontWeight.Bold,
+                            color = Color(0xFF182230),
+                            fontSize = 22.sp,
+                            modifier = Modifier.weight(1f)
+                        )
+                        androidx.compose.material3.TextButton(onClick = {
+                            val savedTree = context.getSharedPreferences(
+                                "arquivo_azul", android.content.Context.MODE_PRIVATE
+                            ).getString("status_tree_uri", null)
+                            if (savedTree != null) {
+                                midias = MediaArchive.importStatusTree(context, Uri.parse(savedTree))
+                                avisoMidias = "Status atualizados."
+                            } else {
+                                escolherPastaStatus.launch(null)
+                            }
+                        }) {
+                            androidx.compose.material3.Text("Atualizar", color = Azul)
                         }
                     }
-                    if (statusSalvos.isEmpty()) {
-                        Column(Modifier.fillMaxWidth().padding(horizontal = 28.dp, vertical = 28.dp),
-                            horizontalAlignment = Alignment.CenterHorizontally) {
-                            androidx.compose.material3.Text("◉", color = Azul, fontSize = 38.sp)
-                            androidx.compose.material3.Text("Nenhum status acessível encontrado",
-                                fontWeight = FontWeight.SemiBold, color = Color(0xFF182230),
-                                modifier = Modifier.padding(top = 12.dp))
-                            androidx.compose.material3.Text(
-                                "Selecione a pasta .Statuses do WhatsApp. Os arquivos que o Android permitir acessar aparecerão aqui.",
-                                color = Color(0xFF667085), fontSize = 13.sp, modifier = Modifier.padding(top = 8.dp))
-                            Button(onClick = { escolherPastaStatus.launch(null) },
-                                modifier = Modifier.fillMaxWidth().padding(top = 16.dp),
-                                colors = ButtonDefaults.buttonColors(containerColor = Azul)) {
-                                androidx.compose.material3.Text("Selecionar pasta de Status")
+                    androidx.compose.material3.Text(
+                        "Status",
+                        fontSize = 19.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = Color(0xFF182230),
+                        modifier = Modifier.padding(start = 16.dp, bottom = 10.dp)
+                    )
+                    LazyRow(
+                        contentPadding = PaddingValues(horizontal = 16.dp, vertical = 4.dp),
+                        horizontalArrangement = Arrangement.spacedBy(10.dp)
+                    ) {
+                        item {
+                            Column(
+                                Modifier.width(145.dp).height(258.dp)
+                                    .background(Color.White, RoundedCornerShape(22.dp))
+                                    .clickable { escolherPastaStatus.launch(null) }
+                                    .padding(12.dp),
+                                horizontalAlignment = Alignment.CenterHorizontally,
+                                verticalArrangement = Arrangement.Center
+                            ) {
+                                Box(
+                                    Modifier.size(74.dp).background(AzulClaro, CircleShape),
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    androidx.compose.material3.Text("+", color = Azul, fontSize = 42.sp)
+                                }
+                                androidx.compose.material3.Text(
+                                    "Adicionar status",
+                                    color = Color(0xFF182230),
+                                    fontWeight = FontWeight.SemiBold,
+                                    fontSize = 14.sp,
+                                    modifier = Modifier.padding(top = 14.dp)
+                                )
+                                androidx.compose.material3.Text(
+                                    "Selecionar pasta",
+                                    color = Color(0xFF667085),
+                                    fontSize = 11.sp,
+                                    modifier = Modifier.padding(top = 4.dp)
+                                )
                             }
                         }
-                    } else {
-                        LazyVerticalGrid(
-                            columns = GridCells.Fixed(2),
-                            contentPadding = PaddingValues(start = 12.dp, end = 12.dp, bottom = 20.dp),
-                            horizontalArrangement = Arrangement.spacedBy(10.dp),
-                            verticalArrangement = Arrangement.spacedBy(10.dp)
-                        ) {
-                            gridItems(statusSalvos) { status ->
-                                Column(
-                                    Modifier.fillMaxWidth().background(Color.White, RoundedCornerShape(14.dp))
-                                        .clickable { statusSelecionado = status }
-                                        .padding(8.dp)
-                                ) {
-                                    Box(Modifier.fillMaxWidth().height(190.dp)
-                                        .background(Color(0xFFE8EDF5), RoundedCornerShape(10.dp))) {
-                                        AndroidView(
-                                            factory = { ctx -> ImageView(ctx).apply {
-                                                scaleType = ImageView.ScaleType.CENTER_CROP
-                                                if (status.isVideo) {
-                                                    val retriever = android.media.MediaMetadataRetriever()
-                                                    try {
-                                                        retriever.setDataSource(status.file.absolutePath)
-                                                        setImageBitmap(retriever.getFrameAtTime(0))
-                                                    } catch (_: Exception) {
-                                                        setImageResource(android.R.drawable.ic_media_play)
-                                                    } finally {
-                                                        try { retriever.release() } catch (_: Exception) { }
-                                                    }
-                                                } else {
-                                                    setImageURI(Uri.fromFile(status.file))
+                        items(statusSalvos) { status ->
+                            Column(
+                                Modifier.width(145.dp).height(258.dp)
+                                    .background(Color(0xFFE8EDF5), RoundedCornerShape(22.dp))
+                                    .clickable { statusSelecionado = status }
+                            ) {
+                                Box(Modifier.fillMaxSize()) {
+                                    AndroidView(
+                                        factory = { ctx -> ImageView(ctx).apply {
+                                            scaleType = ImageView.ScaleType.CENTER_CROP
+                                            if (status.isVideo) {
+                                                val retriever = android.media.MediaMetadataRetriever()
+                                                try {
+                                                    retriever.setDataSource(status.file.absolutePath)
+                                                    setImageBitmap(retriever.getFrameAtTime(0))
+                                                } catch (_: Exception) {
+                                                    setImageResource(android.R.drawable.ic_media_play)
+                                                } finally {
+                                                    try { retriever.release() } catch (_: Exception) { }
                                                 }
-                                            } },
-                                            modifier = Modifier.fillMaxSize()
-                                        )
-                                        if (status.isVideo) {
-                                            Box(Modifier.align(Alignment.BottomEnd).padding(7.dp)
-                                                .background(Color.Black.copy(alpha = 0.65f), CircleShape)
-                                                .padding(horizontal = 8.dp, vertical = 4.dp)) {
-                                                androidx.compose.material3.Text("▶ VÍDEO",
-                                                    color = Color.White, fontSize = 10.sp, fontWeight = FontWeight.Bold)
+                                            } else {
+                                                setImageURI(Uri.fromFile(status.file))
                                             }
+                                        } },
+                                        modifier = Modifier.fillMaxSize()
+                                    )
+                                    Box(
+                                        Modifier.align(Alignment.BottomStart).fillMaxWidth()
+                                            .background(Color.Black.copy(alpha = 0.48f))
+                                            .padding(horizontal = 10.dp, vertical = 12.dp)
+                                    ) {
+                                        androidx.compose.material3.Text(
+                                            status.name,
+                                            color = Color.White,
+                                            fontSize = 13.sp,
+                                            fontWeight = FontWeight.SemiBold,
+                                            maxLines = 2
+                                        )
+                                    }
+                                    if (status.isVideo) {
+                                        Box(
+                                            Modifier.align(Alignment.TopEnd).padding(8.dp)
+                                                .background(Color.Black.copy(alpha = 0.62f), CircleShape)
+                                                .padding(horizontal = 8.dp, vertical = 5.dp)
+                                        ) {
+                                            androidx.compose.material3.Text(
+                                                "▶",
+                                                color = Color.White,
+                                                fontSize = 11.sp
+                                            )
                                         }
                                     }
-                                    androidx.compose.material3.Text(
-                                        status.name, color = Color(0xFF344054), fontSize = 11.sp,
-                                        maxLines = 1, modifier = Modifier.padding(top = 7.dp, start = 2.dp)
-                                    )
                                 }
                             }
                         }
+                    }
+                    if (statusSalvos.isEmpty()) {
+                        androidx.compose.material3.Text(
+                            "Quando houver arquivos de status disponíveis, eles aparecerão aqui. Toque em Adicionar status para autorizar a pasta .Statuses do WhatsApp.",
+                            color = Color(0xFF667085),
+                            fontSize = 13.sp,
+                            modifier = Modifier.padding(horizontal = 18.dp, vertical = 18.dp)
+                        )
                     }
                 }
             } else {
