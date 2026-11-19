@@ -1,6 +1,7 @@
 package com.meuarquivoazul.app
 
 import android.content.Intent
+import android.content.ContentValues
 import android.os.Bundle
 import android.os.Build
 import android.content.pm.PackageManager
@@ -50,6 +51,34 @@ import java.util.Locale
 private val Azul = Color(0xFF2563EB)
 private val AzulClaro = Color(0xFFEAF1FF)
 private val Fundo = Color(0xFFF7F9FC)
+
+private fun salvarNaGaleria(context: android.content.Context, media: ArchivedMedia): Boolean {
+    val resolver = context.contentResolver
+    val values = ContentValues().apply {
+        put(android.provider.MediaStore.MediaColumns.DISPLAY_NAME, media.file.name.substringAfter('_'))
+        put(android.provider.MediaStore.MediaColumns.MIME_TYPE, if (media.isVideo) "video/mp4" else "image/jpeg")
+        if (Build.VERSION.SDK_INT >= 29) {
+            put(android.provider.MediaStore.MediaColumns.RELATIVE_PATH,
+                if (media.isVideo) "Movies/Meu Arquivo Azul" else "Pictures/Meu Arquivo Azul")
+            put(android.provider.MediaStore.MediaColumns.IS_PENDING, 1)
+        }
+    }
+    val collection = if (media.isVideo) MediaStore.Video.Media.EXTERNAL_CONTENT_URI
+        else MediaStore.Images.Media.EXTERNAL_CONTENT_URI
+    val uri = resolver.insert(collection, values) ?: return false
+    return try {
+        resolver.openOutputStream(uri)?.use { output -> media.file.inputStream().use { it.copyTo(output) } }
+            ?: throw IllegalStateException("Não foi possível gravar o arquivo")
+        if (Build.VERSION.SDK_INT >= 29) {
+            val done = ContentValues().apply { put(android.provider.MediaStore.MediaColumns.IS_PENDING, 0) }
+            resolver.update(uri, done, null, null)
+        }
+        true
+    } catch (_: Exception) {
+        resolver.delete(uri, null, null)
+        false
+    }
+}
 
 class MainActivity : ComponentActivity() {
     private var resumeVersion by mutableIntStateOf(0)
@@ -162,6 +191,11 @@ private fun TelaPrincipal(resumeVersion: Int) {
                     colors = ButtonDefaults.buttonColors(containerColor = Azul)
                 ) { androidx.compose.material3.Text("Configurar acesso às notificações") }
                 Button(
+                    onClick = { escolherPastaStatus.launch(null) },
+                    modifier = Modifier.fillMaxWidth().padding(top = 8.dp),
+                    colors = ButtonDefaults.buttonColors(containerColor = AzulClaro, contentColor = Azul)
+                ) { androidx.compose.material3.Text("Selecionar pasta de Status do WhatsApp") }
+                Button(
                     onClick = { mensagens = ArchiveStore.all(context) },
                     modifier = Modifier.fillMaxWidth().padding(top = 8.dp),
                     colors = ButtonDefaults.buttonColors(containerColor = AzulClaro, contentColor = Azul)
@@ -200,8 +234,9 @@ private fun TelaPrincipal(resumeVersion: Int) {
                             RoundedCornerShape(4.dp)))
                     }
                 }
-                IconButton(onClick = { avisoMidias = "Mídia já está salva no Meu Arquivo Azul." },
-                    modifier = Modifier.align(Alignment.TopEnd).padding(top = 28.dp, end = 12.dp)) {
+                IconButton(onClick = {
+                    avisoMidias = if (salvarNaGaleria(context, item)) "Status salvo na galeria do aparelho." else "Não foi possível salvar este status na galeria."
+                }, modifier = Modifier.align(Alignment.TopEnd).padding(top = 28.dp, end = 12.dp)) {
                     Icon(Icons.Default.Download, contentDescription = "Baixar status", tint = Color.White)
                 }
                 if (indice > 0) {
@@ -342,36 +377,6 @@ private fun TelaPrincipal(resumeVersion: Int) {
                         contentPadding = PaddingValues(horizontal = 16.dp, vertical = 4.dp),
                         horizontalArrangement = Arrangement.spacedBy(10.dp)
                     ) {
-                        item {
-                            Column(
-                                Modifier.width(145.dp).height(258.dp)
-                                    .background(Color.White, RoundedCornerShape(22.dp))
-                                    .clickable { escolherPastaStatus.launch(null) }
-                                    .padding(12.dp),
-                                horizontalAlignment = Alignment.CenterHorizontally,
-                                verticalArrangement = Arrangement.Center
-                            ) {
-                                Box(
-                                    Modifier.size(74.dp).background(AzulClaro, CircleShape),
-                                    contentAlignment = Alignment.Center
-                                ) {
-                                    androidx.compose.material3.Text("+", color = Azul, fontSize = 42.sp)
-                                }
-                                androidx.compose.material3.Text(
-                                    "Adicionar status",
-                                    color = Color(0xFF182230),
-                                    fontWeight = FontWeight.SemiBold,
-                                    fontSize = 14.sp,
-                                    modifier = Modifier.padding(top = 14.dp)
-                                )
-                                androidx.compose.material3.Text(
-                                    "Selecionar pasta",
-                                    color = Color(0xFF667085),
-                                    fontSize = 11.sp,
-                                    modifier = Modifier.padding(top = 4.dp)
-                                )
-                            }
-                        }
                         items(statusSalvos) { status ->
                             Column(
                                 Modifier.width(145.dp).height(258.dp)
@@ -430,7 +435,7 @@ private fun TelaPrincipal(resumeVersion: Int) {
                     }
                     if (statusSalvos.isEmpty()) {
                         androidx.compose.material3.Text(
-                            "Quando houver arquivos de status disponíveis, eles aparecerão aqui. Toque em Adicionar status para autorizar a pasta .Statuses do WhatsApp.",
+                            "Os status disponíveis de outros contatos aparecerão aqui. Para visualizar, autorize a pasta .Statuses do WhatsApp nas Configurações.",
                             color = Color(0xFF667085),
                             fontSize = 13.sp,
                             modifier = Modifier.padding(horizontal = 18.dp, vertical = 18.dp)
