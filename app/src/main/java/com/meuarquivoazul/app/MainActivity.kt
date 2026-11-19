@@ -5,6 +5,9 @@ import android.os.Bundle
 import android.os.Build
 import android.content.pm.PackageManager
 import android.provider.Settings
+import android.net.Uri
+import android.widget.ImageView
+import android.widget.VideoView
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.result.contract.ActivityResultContracts
@@ -17,6 +20,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
+import androidx.compose.material.icons.filled.Download
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -26,6 +30,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
+import androidx.compose.ui.viewinterop.AndroidView
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
@@ -80,6 +85,7 @@ private fun TelaPrincipal() {
             avisoMidias = "Pasta selecionada. Foram copiadas as fotos e os vídeos acessíveis."
         }
     }
+    var statusSelecionado by remember { mutableStateOf<ArchivedMedia?>(null) }
     var contato by remember { mutableStateOf<String?>(null) }
     var aba by remember { mutableStateOf("Conversas") }
     var mostrarConfiguracoes by remember { mutableStateOf(false) }
@@ -103,9 +109,9 @@ private fun TelaPrincipal() {
             Modifier.fillMaxWidth().background(Azul).padding(start = 16.dp, end = 6.dp, top = 8.dp, bottom = 8.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            if (mostrarConfiguracoes || contato != null) {
+            if (mostrarConfiguracoes || contato != null || statusSelecionado != null) {
                 IconButton(onClick = {
-                    if (mostrarConfiguracoes) mostrarConfiguracoes = false else contato = null
+                    when { mostrarConfiguracoes -> mostrarConfiguracoes = false; statusSelecionado != null -> statusSelecionado = null; else -> contato = null }
                 }) {
                     Icon(Icons.Default.ArrowBack, contentDescription = "Voltar", tint = Color.White)
                 }
@@ -113,6 +119,7 @@ private fun TelaPrincipal() {
             androidx.compose.material3.Text(
                 when {
                     mostrarConfiguracoes -> "Configurações"
+                    statusSelecionado != null -> "Status"
                     contato != null -> contato!!
                     else -> "Meu Arquivo Azul"
                 },
@@ -121,7 +128,7 @@ private fun TelaPrincipal() {
                 fontSize = 20.sp,
                 fontWeight = FontWeight.Bold
             )
-            if (!mostrarConfiguracoes && contato == null) {
+            if (!mostrarConfiguracoes && contato == null && statusSelecionado == null) {
                 IconButton(onClick = { mostrarConfiguracoes = true }) {
                     Icon(Icons.Default.Settings, contentDescription = "Configurações", tint = Color.White)
                 }
@@ -148,6 +155,36 @@ private fun TelaPrincipal() {
                 androidx.compose.material3.Text(
                     "O aplicativo guarda apenas prévias recebidas como notificações. Ele não acessa conversas privadas nem garante recuperar mensagens ou mídias apagadas.",
                     color = Color(0xFF667085), fontSize = 12.sp, modifier = Modifier.padding(top = 18.dp)
+                )
+            }
+        } else if (statusSelecionado != null) {
+            val item = statusSelecionado!!
+            Box(Modifier.fillMaxSize().background(Color.Black)) {
+                if (item.isVideo) {
+                    AndroidView(
+                        factory = { ctx -> VideoView(ctx).apply {
+                            setVideoURI(Uri.fromFile(item.file))
+                            setOnPreparedListener { it.isLooping = true; start() }
+                        } },
+                        modifier = Modifier.fillMaxSize()
+                    )
+                } else {
+                    AndroidView(
+                        factory = { ctx -> ImageView(ctx).apply {
+                            scaleType = ImageView.ScaleType.FIT_CENTER
+                            setImageURI(Uri.fromFile(item.file))
+                        } },
+                        modifier = Modifier.fillMaxSize()
+                    )
+                }
+                IconButton(onClick = { avisoMidias = "Mídia já está salva no Meu Arquivo Azul." },
+                    modifier = Modifier.align(Alignment.TopEnd).padding(12.dp)) {
+                    Icon(Icons.Default.Download, contentDescription = "Baixar status", tint = Color.White)
+                }
+                androidx.compose.material3.Text(
+                    "Toque no ícone de download para confirmar que a mídia está guardada",
+                    color = Color.White, fontSize = 11.sp,
+                    modifier = Modifier.align(Alignment.BottomCenter).padding(16.dp)
                 )
             }
         } else if (contato != null) {
@@ -231,26 +268,54 @@ private fun TelaPrincipal() {
                     }
                 }
             } else if (aba == "Status") {
-                Column(
-                    Modifier.fillMaxWidth().padding(horizontal = 28.dp, vertical = 48.dp),
-                    horizontalAlignment = Alignment.CenterHorizontally
-                ) {
-                    androidx.compose.material3.Text("◉", color = Azul, fontSize = 38.sp)
-                    androidx.compose.material3.Text("Status visualizados", fontWeight = FontWeight.SemiBold,
-                        color = Color(0xFF182230), modifier = Modifier.padding(top = 12.dp))
-                    androidx.compose.material3.Text(
-                        "A pasta de status pode ser protegida ou ocultada pelo WhatsApp. Somente arquivos que o Android disponibilizar poderão ser copiados.",
-                        color = Color(0xFF667085), fontSize = 13.sp, modifier = Modifier.padding(top = 8.dp))
-                    Button(onClick = {
-                        escolherPastaStatus.launch(null)
-                    }, modifier = Modifier.fillMaxWidth().padding(top = 16.dp),
-                        colors = ButtonDefaults.buttonColors(containerColor = Azul)) {
-                        androidx.compose.material3.Text("Selecionar pasta de Status do WhatsApp")
+                val statusSalvos = midias.filter { it.file.name.startsWith("status_") }
+                Column(Modifier.fillMaxSize()) {
+                    Row(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 12.dp),
+                        verticalAlignment = Alignment.CenterVertically) {
+                        androidx.compose.material3.Text("Atualizações", fontWeight = FontWeight.Bold,
+                            color = Color(0xFF182230), fontSize = 17.sp, modifier = Modifier.weight(1f))
+                        androidx.compose.material3.TextButton(onClick = { escolherPastaStatus.launch(null) }) {
+                            androidx.compose.material3.Text("Procurar", color = Azul)
+                        }
                     }
-                    androidx.compose.material3.Text(
-                        "No seletor do Android, abra Android/media/com.whatsapp/WhatsApp/Media e escolha .Statuses. Se a pasta não aparecer, ative ‘mostrar arquivos ocultos’ no seletor/gerenciador de arquivos.",
-                        color = Color(0xFF667085), fontSize = 11.sp, modifier = Modifier.padding(top = 10.dp)
-                    )
+                    if (statusSalvos.isEmpty()) {
+                        Column(Modifier.fillMaxWidth().padding(horizontal = 28.dp, vertical = 28.dp),
+                            horizontalAlignment = Alignment.CenterHorizontally) {
+                            androidx.compose.material3.Text("◉", color = Azul, fontSize = 38.sp)
+                            androidx.compose.material3.Text("Nenhum status acessível encontrado",
+                                fontWeight = FontWeight.SemiBold, color = Color(0xFF182230),
+                                modifier = Modifier.padding(top = 12.dp))
+                            androidx.compose.material3.Text(
+                                "Selecione a pasta .Statuses do WhatsApp. Os arquivos que o Android permitir acessar aparecerão aqui.",
+                                color = Color(0xFF667085), fontSize = 13.sp, modifier = Modifier.padding(top = 8.dp))
+                            Button(onClick = { escolherPastaStatus.launch(null) },
+                                modifier = Modifier.fillMaxWidth().padding(top = 16.dp),
+                                colors = ButtonDefaults.buttonColors(containerColor = Azul)) {
+                                androidx.compose.material3.Text("Selecionar pasta de Status")
+                            }
+                        }
+                    } else {
+                        LazyColumn(contentPadding = PaddingValues(bottom = 16.dp)) {
+                            items(statusSalvos) { status ->
+                                Row(Modifier.fillMaxWidth().clickable { statusSelecionado = status }
+                                    .padding(horizontal = 16.dp, vertical = 10.dp),
+                                    verticalAlignment = Alignment.CenterVertically) {
+                                    Box(Modifier.size(52.dp).background(AzulClaro, RoundedCornerShape(12.dp)),
+                                        contentAlignment = Alignment.Center) {
+                                        androidx.compose.material3.Text(if (status.isVideo) "▶" else "▧",
+                                            color = Azul, fontSize = 22.sp)
+                                    }
+                                    Column(Modifier.weight(1f).padding(start = 12.dp)) {
+                                        androidx.compose.material3.Text(status.name, color = Color(0xFF182230),
+                                            fontWeight = FontWeight.Medium, fontSize = 13.sp, maxLines = 1)
+                                        androidx.compose.material3.Text(if (status.isVideo) "Vídeo • toque para abrir" else "Foto • toque para abrir",
+                                            color = Color(0xFF667085), fontSize = 11.sp)
+                                    }
+                                    Icon(Icons.Default.Download, contentDescription = "Mídia salva", tint = Azul)
+                                }
+                            }
+                        }
+                    }
                 }
             } else {
                 Column(Modifier.fillMaxSize().padding(16.dp)) {
