@@ -277,7 +277,8 @@ private fun TelaPrincipal(resumeVersion: Int) {
                 }
             }
         } else {
-            // A navegação principal fica fixa no rodapé.\n            if (aba == "Conversas") {
+            // A navegação principal fica fixa no rodapé.
+            if (aba == "Conversas") {
                 if (contatos.isEmpty()) {
                     Column(
                         Modifier.fillMaxWidth().padding(horizontal = 28.dp, vertical = 72.dp),
