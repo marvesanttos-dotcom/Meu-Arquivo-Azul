@@ -64,6 +64,57 @@ object MediaArchive {
         return result.distinctBy { it.file.absolutePath }
     }
 
+    fun importStatusTree(context: Context, treeUri: android.net.Uri): List<ArchivedMedia> {
+        val folder = File(context.filesDir, DIR).apply { mkdirs() }
+        val resolver = context.contentResolver
+        val saved = mutableListOf<ArchivedMedia>()
+        val rootId = try { android.provider.DocumentsContract.getTreeDocumentId(treeUri) }
+            catch (_: Exception) { return all(context) }
+
+        fun walk(documentId: String, depth: Int) {
+            if (depth > 4) return
+            val childrenUri = android.provider.DocumentsContract.buildChildDocumentsUriUsingTree(treeUri, documentId)
+            val projection = arrayOf(
+                android.provider.DocumentsContract.Document.COLUMN_DOCUMENT_ID,
+                android.provider.DocumentsContract.Document.COLUMN_DISPLAY_NAME,
+                android.provider.DocumentsContract.Document.COLUMN_MIME_TYPE
+            )
+            try {
+                resolver.query(childrenUri, projection, null, null, null)?.use { cursor ->
+                    val idCol = cursor.getColumnIndexOrThrow(android.provider.DocumentsContract.Document.COLUMN_DOCUMENT_ID)
+                    val nameCol = cursor.getColumnIndexOrThrow(android.provider.DocumentsContract.Document.COLUMN_DISPLAY_NAME)
+                    val mimeCol = cursor.getColumnIndexOrThrow(android.provider.DocumentsContract.Document.COLUMN_MIME_TYPE)
+                    while (cursor.moveToNext()) {
+                        val id = cursor.getString(idCol)
+                        val name = cursor.getString(nameCol) ?: "midia"
+                        val mime = cursor.getString(mimeCol) ?: ""
+                        if (mime == android.provider.DocumentsContract.Document.MIME_TYPE_DIR) {
+                            walk(id, depth + 1)
+                        } else if (mime.startsWith("image/") || mime.startsWith("video/") ||
+                            name.substringAfterLast('.', "").lowercase() in setOf("jpg","jpeg","png","webp","mp4","3gp","mkv","mov")) {
+                            val safeName = name.replace(Regex("[^A-Za-z0-9._-]"), "_")
+                            val destination = File(folder, "status_${id.hashCode()}_$safeName")
+                            if (!destination.exists() || destination.length() == 0L) {
+                                try {
+                                    val sourceUri = android.provider.DocumentsContract.buildDocumentUriUsingTree(treeUri, id)
+                                    resolver.openInputStream(sourceUri)?.use { input ->
+                                        destination.outputStream().use { output -> input.copyTo(output) }
+                                    }
+                                } catch (_: Exception) { destination.delete() }
+                            }
+                            if (destination.exists() && destination.length() > 0L) {
+                                saved.add(ArchivedMedia(name, destination, mime.startsWith("video/") ||
+                                    name.substringAfterLast('.', "").lowercase() in setOf("mp4","3gp","mkv","mov")))
+                            }
+                        }
+                    }
+                }
+            } catch (_: Exception) { }
+        }
+        walk(rootId, 0)
+        return (all(context) + saved).distinctBy { it.file.absolutePath }.sortedByDescending { it.file.lastModified() }
+    }
+
     fun all(context: Context): List<ArchivedMedia> =
         File(context.filesDir, DIR).listFiles()?.filter { it.isFile }?.map {
             ArchivedMedia(it.name.substringAfter('_').substringAfter('_'), it, it.name.startsWith("video_"))
