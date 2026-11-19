@@ -20,7 +20,6 @@ import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Surface
 import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -54,13 +53,14 @@ private fun TelaPrincipal() {
     val context = LocalContext.current
     var mensagens by remember { mutableStateOf(ArchiveStore.all(context)) }
     var contato by remember { mutableStateOf<String?>(null) }
+    var aba by remember { mutableStateOf("Conversas") }
     var mostrarConfiguracoes by remember { mutableStateOf(false) }
     val contatos = mensagens.map { it.sender }.distinct()
-    val filtradas = if (contato == null) mensagens else mensagens.filter { it.sender == contato }
+    val filtradas = mensagens.filter { it.sender == contato }
 
     Column(Modifier.fillMaxSize().background(Fundo)) {
         Row(
-            Modifier.fillMaxWidth().background(Azul).padding(start = 18.dp, end = 8.dp, top = 10.dp, bottom = 10.dp),
+            Modifier.fillMaxWidth().background(Azul).padding(start = 16.dp, end = 6.dp, top = 8.dp, bottom = 8.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
             if (mostrarConfiguracoes || contato != null) {
@@ -110,49 +110,7 @@ private fun TelaPrincipal() {
                     color = Color(0xFF667085), fontSize = 12.sp, modifier = Modifier.padding(top = 18.dp)
                 )
             }
-        } else if (contato == null) {
-            if (contatos.isEmpty()) {
-                Column(
-                    Modifier.fillMaxWidth().padding(horizontal = 28.dp, vertical = 72.dp),
-                    horizontalAlignment = Alignment.CenterHorizontally
-                ) {
-                    androidx.compose.material3.Text("💬", fontSize = 38.sp)
-                    androidx.compose.material3.Text(
-                        "Suas conversas aparecerão aqui",
-                        fontWeight = FontWeight.SemiBold,
-                        color = Color(0xFF182230),
-                        modifier = Modifier.padding(top = 12.dp)
-                    )
-                    androidx.compose.material3.Text(
-                        "Use a engrenagem para configurar o arquivamento de notificações.",
-                        color = Color(0xFF667085), fontSize = 13.sp,
-                        modifier = Modifier.padding(top = 6.dp)
-                    )
-                }
-            } else {
-                LazyColumn {
-                    items(contatos) { nome ->
-                        val ultima = mensagens.first { it.sender == nome }
-                        Row(
-                            Modifier.fillMaxWidth().clickable { contato = nome }.padding(horizontal = 16.dp, vertical = 12.dp),
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Box(Modifier.size(50.dp).background(AzulClaro, CircleShape), contentAlignment = Alignment.Center) {
-                                androidx.compose.material3.Text(nome.take(1).uppercase(), color = Azul, fontWeight = FontWeight.Bold, fontSize = 19.sp)
-                            }
-                            Column(Modifier.weight(1f).padding(start = 12.dp)) {
-                                androidx.compose.material3.Text(nome, fontWeight = FontWeight.SemiBold, color = Color(0xFF182230), fontSize = 15.sp)
-                                androidx.compose.material3.Text(ultima.message, color = Color(0xFF667085), fontSize = 13.sp, maxLines = 1)
-                            }
-                            androidx.compose.material3.Text(
-                                mensagens.count { it.sender == nome }.toString(),
-                                color = Azul, fontSize = 12.sp
-                            )
-                        }
-                    }
-                }
-            }
-        } else {
+        } else if (contato != null) {
             LazyColumn(contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp)) {
                 items(filtradas) { item ->
                     Column(
@@ -166,6 +124,88 @@ private fun TelaPrincipal() {
                             modifier = Modifier.padding(top = 7.dp)
                         )
                     }
+                }
+            }
+        } else {
+            // Abas separadas no estilo da navegação do WhatsApp.
+            Row(Modifier.fillMaxWidth().background(Azul)) {
+                listOf("Conversas", "Status").forEach { nome ->
+                    Column(
+                        Modifier.weight(1f).clickable { aba = nome }.padding(top = 12.dp, bottom = 0.dp),
+                        horizontalAlignment = Alignment.CenterHorizontally
+                    ) {
+                        androidx.compose.material3.Text(
+                            nome.uppercase(),
+                            color = if (aba == nome) Color.White else Color.White.copy(alpha = 0.72f),
+                            fontSize = 13.sp,
+                            fontWeight = if (aba == nome) FontWeight.Bold else FontWeight.Medium
+                        )
+                        Spacer(
+                            Modifier.padding(top = 10.dp).fillMaxWidth(0.72f).height(3.dp)
+                                .background(if (aba == nome) Color.White else Color.Transparent, RoundedCornerShape(topStart = 3.dp, topEnd = 3.dp))
+                        )
+                    }
+                }
+            }
+
+            if (aba == "Conversas") {
+                if (contatos.isEmpty()) {
+                    Column(
+                        Modifier.fillMaxWidth().padding(horizontal = 28.dp, vertical = 72.dp),
+                        horizontalAlignment = Alignment.CenterHorizontally
+                    ) {
+                        androidx.compose.material3.Text("💬", fontSize = 38.sp)
+                        androidx.compose.material3.Text(
+                            "Suas conversas aparecerão aqui",
+                            fontWeight = FontWeight.SemiBold,
+                            color = Color(0xFF182230),
+                            modifier = Modifier.padding(top = 12.dp)
+                        )
+                        androidx.compose.material3.Text(
+                            "As prévias recebidas serão organizadas por contato.",
+                            color = Color(0xFF667085), fontSize = 13.sp,
+                            modifier = Modifier.padding(top = 6.dp)
+                        )
+                    }
+                } else {
+                    LazyColumn {
+                        items(contatos) { nome ->
+                            val ultima = mensagens.first { it.sender == nome }
+                            Row(
+                                Modifier.fillMaxWidth().clickable { contato = nome }.padding(horizontal = 16.dp, vertical = 12.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Box(Modifier.size(50.dp).background(AzulClaro, CircleShape), contentAlignment = Alignment.Center) {
+                                    androidx.compose.material3.Text(nome.take(1).uppercase(), color = Azul, fontWeight = FontWeight.Bold, fontSize = 19.sp)
+                                }
+                                Column(Modifier.weight(1f).padding(start = 12.dp)) {
+                                    androidx.compose.material3.Text(nome, fontWeight = FontWeight.SemiBold, color = Color(0xFF182230), fontSize = 15.sp)
+                                    androidx.compose.material3.Text(ultima.message, color = Color(0xFF667085), fontSize = 13.sp, maxLines = 1)
+                                }
+                                androidx.compose.material3.Text(
+                                    mensagens.count { it.sender == nome }.toString(),
+                                    color = Azul, fontSize = 12.sp
+                                )
+                            }
+                        }
+                    }
+                }
+            } else {
+                Column(
+                    Modifier.fillMaxWidth().padding(horizontal = 28.dp, vertical = 72.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally
+                ) {
+                    androidx.compose.material3.Text("◉", color = Azul, fontSize = 38.sp)
+                    androidx.compose.material3.Text(
+                        "Status",
+                        fontWeight = FontWeight.SemiBold,
+                        color = Color(0xFF182230),
+                        modifier = Modifier.padding(top = 12.dp)
+                    )
+                    androidx.compose.material3.Text(
+                        "Esta área ficará separada das conversas. A importação e o arquivamento de status ainda serão implementados.",
+                        color = Color(0xFF667085), fontSize = 13.sp
+                    )
                 }
             }
         }
