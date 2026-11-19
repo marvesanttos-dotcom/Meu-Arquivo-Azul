@@ -1,6 +1,11 @@
 package com.meuarquivoazul.app
 
 import android.os.Bundle
+import android.content.Intent
+import android.provider.Settings
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.foundation.background
@@ -20,6 +25,8 @@ import androidx.compose.material.icons.filled.NotificationsOff
 import androidx.compose.material.icons.filled.Send
 import androidx.compose.material.icons.filled.DonutLarge
 import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.Button
 import androidx.compose.material3.Icon
 import androidx.compose.material3.OutlinedTextField
@@ -101,6 +108,11 @@ private fun TelaConversas() {
     var nomeApp by remember { mutableStateOf(preferencias.getString("nome_app", "WhatsApp") ?: "WhatsApp") }
     var fraseApp by remember { mutableStateOf(preferencias.getString("frase_app", "") ?: "") }
     var mostrarConfiguracoes by remember { mutableStateOf(false) }
+    var menuAberto by remember { mutableStateOf(false) }
+    var mostrarArquivo by remember { mutableStateOf(false) }
+    var recarregarArquivo by remember { mutableIntStateOf(0) }
+    val mensagensReais = remember(recarregarArquivo) { ArchiveStore.all(context) }
+    val acessoNotificacoes = Settings.Secure.getString(context.contentResolver, "enabled_notification_listeners")?.contains(context.packageName) == true
     var nomeEditado by remember { mutableStateOf(nomeApp) }
     var fraseEditada by remember { mutableStateOf(fraseApp) }
     val filtros = listOf("Todas")
@@ -164,8 +176,21 @@ private fun TelaConversas() {
                         maxLines = 1, overflow = TextOverflow.Ellipsis)
                 }
             }
-            Icon(Icons.Default.MoreVert, contentDescription = "Mais opções",
-                tint = Texto, modifier = Modifier.size(27.dp))
+            Box {
+                Icon(Icons.Default.MoreVert, contentDescription = "Mais opções",
+                    tint = Texto, modifier = Modifier.size(27.dp).clickable { menuAberto = true })
+                DropdownMenu(expanded = menuAberto, onDismissRequest = { menuAberto = false }) {
+                    DropdownMenuItem(text = { Text("Mensagens recebidas") }, onClick = {
+                        menuAberto = false
+                        mostrarArquivo = true
+                        recarregarArquivo++
+                    })
+                    DropdownMenuItem(text = { Text("Voltar às conversas") }, onClick = {
+                        menuAberto = false
+                        mostrarArquivo = false
+                    })
+                }
+            }
         }
 
         Row(
@@ -187,11 +212,43 @@ private fun TelaConversas() {
             }
         }
 
-        LazyColumn(
-            modifier = Modifier.weight(1f),
-            contentPadding = PaddingValues(top = 3.dp, bottom = 8.dp)
-        ) {
-            items(lista) { conversa -> LinhaConversa(conversa) }
+        if (mostrarArquivo) {
+            Column(Modifier.weight(1f).fillMaxWidth().padding(horizontal = 20.dp, vertical = 12.dp)) {
+                Text("Mensagens recebidas", color = Texto, fontSize = 21.sp, fontWeight = FontWeight.Bold)
+                Spacer(Modifier.height(6.dp))
+                Text("Somente leitura: texto que o WhatsApp disponibilizar nas notificações deste aparelho.", color = Cinza, fontSize = 13.sp)
+                Spacer(Modifier.height(10.dp))
+                if (!acessoNotificacoes) {
+                    Text("Autorize o acesso às notificações nas configurações do Android. O APK não poderá responder nem alterar suas conversas.", color = Texto, fontSize = 14.sp)
+                    Spacer(Modifier.height(10.dp))
+                    Button(onClick = { context.startActivity(Intent(Settings.ACTION_NOTIFICATION_LISTENER_SETTINGS)) }) {
+                        Text("Autorizar notificações")
+                    }
+                } else {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Text("Acesso ativado", color = Verde, fontWeight = FontWeight.SemiBold, modifier = Modifier.weight(1f))
+                        TextButton(onClick = { recarregarArquivo++ }) { Text("Atualizar") }
+                    }
+                    if (mensagensReais.isEmpty()) {
+                        Text("Nenhuma notificação capturada ainda. Novas mensagens aparecerão aqui quando forem exibidas pelo WhatsApp.", color = Cinza, fontSize = 14.sp)
+                    } else {
+                        LazyColumn(Modifier.fillMaxWidth()) {
+                            items(mensagensReais) { msg ->
+                                Column(Modifier.fillMaxWidth().padding(vertical = 10.dp)) {
+                                    Text(msg.sender, color = Texto, fontWeight = FontWeight.SemiBold)
+                                    Text(msg.message, color = Cinza, fontSize = 14.sp)
+                                    Text(SimpleDateFormat("dd/MM/yyyy HH:mm", Locale.getDefault()).format(Date(msg.timestamp)), color = Cinza, fontSize = 11.sp)
+                                }
+                                androidx.compose.material3.Divider(color = Linha)
+                            }
+                        }
+                    }
+                }
+            }
+        } else {
+            LazyColumn(Modifier.weight(1f), contentPadding = PaddingValues(top = 3.dp, bottom = 8.dp)) {
+                items(lista) { conversa -> LinhaConversa(conversa) }
+            }
         }
 
         Row(
