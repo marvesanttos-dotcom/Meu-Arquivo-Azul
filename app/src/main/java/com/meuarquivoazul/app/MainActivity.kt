@@ -6,23 +6,15 @@ import androidx.activity.compose.setContent
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.Call
-import androidx.compose.material.icons.filled.CameraAlt
 import androidx.compose.material.icons.filled.Chat
-import androidx.compose.material.icons.filled.Groups
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.NotificationsOff
-import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Send
 import androidx.compose.material.icons.filled.DonutLarge
 import androidx.compose.material3.Icon
@@ -98,7 +90,7 @@ private fun TelaConversas() {
     var busca by remember { mutableStateOf("") }
     var filtro by remember { mutableStateOf("Todas") }
     var aba by remember { mutableStateOf("Conversas") }
-    val filtros = listOf("Todas", "Favoritos", "Grupos  1", "+")
+    val filtros = listOf("Todas")
     val lista = conversasDemo.filter {
         it.nome.contains(busca, ignoreCase = true) || it.mensagem.contains(busca, ignoreCase = true)
     }
@@ -110,40 +102,12 @@ private fun TelaConversas() {
         ) {
             Text("WhatsApp", modifier = Modifier.weight(1f), color = Verde,
                 fontSize = 28.sp, fontWeight = FontWeight.Bold, letterSpacing = (-0.7).sp)
-            Icon(Icons.Default.CameraAlt, contentDescription = "Câmera",
-                tint = Texto, modifier = Modifier.size(29.dp))
-            Spacer(Modifier.width(27.dp))
             Icon(Icons.Default.MoreVert, contentDescription = "Mais opções",
                 tint = Texto, modifier = Modifier.size(27.dp))
         }
 
         Row(
-            Modifier.fillMaxWidth().padding(horizontal = 22.dp, vertical = 8.dp)
-                .height(58.dp).clip(RoundedCornerShape(32.dp)).background(FundoBusca)
-                .padding(horizontal = 18.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Icon(Icons.Default.Search, contentDescription = "Pesquisar",
-                tint = Cinza, modifier = Modifier.size(27.dp))
-            Spacer(Modifier.width(18.dp))
-            BasicTextField(
-                value = busca,
-                onValueChange = { busca = it },
-                singleLine = true,
-                textStyle = androidx.compose.ui.text.TextStyle(color = Texto, fontSize = 17.sp),
-                modifier = Modifier.weight(1f),
-                decorationBox = { inner ->
-                    Box {
-                        if (busca.isEmpty()) Text("Pergunte à Meta AI ou pesquise",
-                            color = Cinza, fontSize = 17.sp, maxLines = 1)
-                        inner()
-                    }
-                }
-            )
-        }
-
-        Row(
-            Modifier.fillMaxWidth().horizontalScroll(rememberScrollState())
+            Modifier.fillMaxWidth()
                 .padding(start = 31.dp, top = 15.dp, bottom = 18.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
@@ -175,13 +139,12 @@ private fun TelaConversas() {
         Row(
             Modifier.fillMaxWidth().height(82.dp).border(0.5.dp, Linha)
                 .background(Color.White).padding(horizontal = 8.dp),
-            horizontalArrangement = Arrangement.SpaceAround,
+            horizontalArrangement = Arrangement.Center,
             verticalAlignment = Alignment.CenterVertically
         ) {
             ItemNavegacao("Conversas", Icons.Default.Chat, aba == "Conversas") { aba = "Conversas" }
             ItemNavegacao("Atualizações", Icons.Default.DonutLarge, aba == "Atualizações") { aba = "Atualizações" }
-            ItemNavegacao("Comunidades", Icons.Default.Groups, aba == "Comunidades") { aba = "Comunidades" }
-            ItemNavegacao("Ligações", Icons.Default.Call, aba == "Ligações") { aba = "Ligações" }
+            Spacer(Modifier.width(28.dp))
         }
     }
 }
