@@ -87,13 +87,9 @@ class MainActivity : ComponentActivity() {
 
 @Composable
 private fun TelaConversas() {
-    var busca by remember { mutableStateOf("") }
-    var filtro by remember { mutableStateOf("Todas") }
     var aba by remember { mutableStateOf("Conversas") }
     val filtros = listOf("Todas")
-    val lista = conversasDemo.filter {
-        it.nome.contains(busca, ignoreCase = true) || it.mensagem.contains(busca, ignoreCase = true)
-    }
+    val lista = conversasDemo
 
     Column(Modifier.fillMaxSize().background(Color.White)) {
         Row(
@@ -117,13 +113,10 @@ private fun TelaConversas() {
                     Modifier.padding(end = 13.dp).clip(CircleShape)
                         .background(if (selecionado) VerdeClaro else Color.White)
                         .border(1.5.dp, if (selecionado) Color(0xFFB8DDBB) else Color(0xFFD5D7D8), CircleShape)
-                        .clickable { filtro = item }
-                        .padding(horizontal = if (item == "+") 17.dp else 19.dp, vertical = 11.dp),
+                        .padding(horizontal = 19.dp, vertical = 11.dp),
                     contentAlignment = Alignment.Center
                 ) {
-                    if (item == "+") Icon(Icons.Default.Add, contentDescription = "Adicionar filtro",
-                        tint = Cinza, modifier = Modifier.size(22.dp))
-                    else Text(item, color = if (selecionado) Color(0xFF185C3A) else Cinza,
+                    Text(item, color = Color(0xFF185C3A),
                         fontSize = 16.sp, fontWeight = FontWeight.SemiBold)
                 }
             }
