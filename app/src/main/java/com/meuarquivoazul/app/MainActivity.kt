@@ -1,556 +1,265 @@
 package com.meuarquivoazul.app
 
-import android.content.Intent
-import android.content.ContentValues
 import android.os.Bundle
-import android.os.Build
-import android.content.pm.PackageManager
-import android.provider.Settings
-import android.provider.MediaStore
-import android.net.Uri
-import android.widget.ImageView
-import android.widget.VideoView
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
-import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.lazy.grid.GridCells
-import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
-import androidx.compose.foundation.lazy.grid.items as gridItems
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.ArrowBack
-import androidx.compose.material.icons.filled.Download
-import androidx.compose.material.icons.filled.ChevronLeft
-import androidx.compose.material.icons.filled.ChevronRight
-import androidx.compose.material.icons.filled.Settings
-import androidx.compose.material3.Button
-import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Call
+import androidx.compose.material.icons.filled.CameraAlt
+import androidx.compose.material.icons.filled.Chat
+import androidx.compose.material.icons.filled.Groups
+import androidx.compose.material.icons.filled.MoreVert
+import androidx.compose.material.icons.filled.NotificationsOff
+import androidx.compose.material.icons.filled.Search
+import androidx.compose.material.icons.filled.Send
+import androidx.compose.material.icons.filled.DonutLarge
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Surface
+import androidx.compose.material3.Text
 import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
-import androidx.compose.ui.draw.clip
-import androidx.compose.ui.viewinterop.AndroidView
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import java.text.SimpleDateFormat
-import java.util.Date
-import java.util.Locale
 
-private val Azul = Color(0xFF2563EB)
-private val AzulClaro = Color(0xFFEAF1FF)
-private val Fundo = Color(0xFFFFFFFF)
+private val Verde = Color(0xFF20A66A)
+private val VerdeClaro = Color(0xFFDDF8D8)
+private val Texto = Color(0xFF111418)
+private val Cinza = Color(0xFF667078)
+private val FundoBusca = Color(0xFFF4F3F1)
+private val Linha = Color(0xFFE9E9E9)
 
-private fun salvarNaGaleria(context: android.content.Context, media: ArchivedMedia): Boolean {
-    val resolver = context.contentResolver
-    val values = ContentValues().apply {
-        put(android.provider.MediaStore.MediaColumns.DISPLAY_NAME, media.file.name.substringAfter('_'))
-        put(android.provider.MediaStore.MediaColumns.MIME_TYPE, if (media.isVideo) "video/mp4" else "image/jpeg")
-        if (Build.VERSION.SDK_INT >= 29) {
-            put(android.provider.MediaStore.MediaColumns.RELATIVE_PATH,
-                if (media.isVideo) "Movies/Meu Arquivo Azul" else "Pictures/Meu Arquivo Azul")
-            put(android.provider.MediaStore.MediaColumns.IS_PENDING, 1)
-        }
-    }
-    val collection = if (media.isVideo) MediaStore.Video.Media.EXTERNAL_CONTENT_URI
-        else MediaStore.Images.Media.EXTERNAL_CONTENT_URI
-    val uri = resolver.insert(collection, values) ?: return false
-    return try {
-        resolver.openOutputStream(uri)?.use { output -> media.file.inputStream().use { it.copyTo(output) } }
-            ?: throw IllegalStateException("Não foi possível gravar o arquivo")
-        if (Build.VERSION.SDK_INT >= 29) {
-            val done = ContentValues().apply { put(android.provider.MediaStore.MediaColumns.IS_PENDING, 0) }
-            resolver.update(uri, done, null, null)
-        }
-        true
-    } catch (_: Exception) {
-        resolver.delete(uri, null, null)
-        false
-    }
-}
+private data class ConversaDemo(
+    val nome: String,
+    val mensagem: String,
+    val horario: String,
+    val avatar: String,
+    val cor: Color,
+    val naoLidas: Int = 0,
+    val silenciada: Boolean = false,
+    val enviada: Boolean = false
+)
+
+private val conversasDemo = listOf(
+    ConversaDemo("Moisés", "😂😂", "11:28", "M", Color(0xFFF1D9CC), enviada = true),
+    ConversaDemo("feira do rolo 🤝", "~ Alexandre adicionou ~ Lucas.", "11:36", "Feira\ndo Rolo", Color(0xFF202B77), silenciada = true),
+    ConversaDemo("+55 74 9192-09... (Você)", "Ma", "9:49", "Você", Color(0xFFB8D4B0), enviada = true),
+    ConversaDemo("Colheita 2026 🌄🚜🌱", "~ Gabriel Castoldi: Kkkkkkk", "Ontem", "🌄", Color(0xFFB7D0DC), 2, true),
+    ConversaDemo("𝓗𝓪𝓻𝓾𝓷𝓪❤️❤️❤️", "▧  Foto", "Ontem", "H", Color(0xFFD9B6A9), 1),
+    ConversaDemo("+55 74 9113-3522", "Olá Cliente ! 📝 Passando para lembrar...", "Ontem", "A", Color(0xFF18265D)),
+    ConversaDemo("Cleilton Alfacred Especialista...", "Obrigado pelo contato!", "Ontem", "C", Color(0xFFD5D5D5))
+)
 
 class MainActivity : ComponentActivity() {
-    private var resumeVersion by mutableIntStateOf(0)
-
-    override fun onResume() {
-        super.onResume()
-        resumeVersion++
-    }
-
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        @Suppress("DEPRECATION")
+        window.decorView.systemUiVisibility =
+            android.view.View.SYSTEM_UI_FLAG_LIGHT_STATUS_BAR or
+            android.view.View.SYSTEM_UI_FLAG_LIGHT_NAVIGATION_BAR
+        window.statusBarColor = android.graphics.Color.WHITE
+        window.navigationBarColor = android.graphics.Color.WHITE
         setContent {
-            MaterialTheme(colorScheme = lightColorScheme(primary = Azul, secondary = Azul, background = Fundo)) {
-                TelaPrincipal(resumeVersion)
+            MaterialTheme(colorScheme = lightColorScheme(
+                primary = Verde,
+                onPrimary = Color.White,
+                background = Color.White,
+                surface = Color.White
+            )) {
+                Surface(modifier = Modifier.fillMaxSize(), color = Color.White) {
+                    TelaConversas()
+                }
             }
         }
     }
 }
 
 @Composable
-private fun TelaPrincipal(resumeVersion: Int) {
-    val context = LocalContext.current
-    var mensagens by remember { mutableStateOf(ArchiveStore.all(context)) }
-    var midias by remember { mutableStateOf(MediaArchive.all(context)) }
-    val statusSalvos = midias.filter { it.file.name.startsWith("status_") }.sortedByDescending { it.file.lastModified() }
-    var avisoMidias by remember { mutableStateOf("Importe as mídias comuns do WhatsApp que o Android disponibilizar.") }
-    val permissaoMidia = remember {
-        if (Build.VERSION.SDK_INT >= 33) arrayOf("android.permission.READ_MEDIA_IMAGES", "android.permission.READ_MEDIA_VIDEO")
-        else arrayOf("android.permission.READ_EXTERNAL_STORAGE")
-    }
-    val pedirPermissao = androidx.activity.compose.rememberLauncherForActivityResult(ActivityResultContracts.RequestMultiplePermissions()) { grants ->
-        if (grants.values.any { it }) {
-            midias = MediaArchive.importAvailable(context)
-            avisoMidias = "Arquivos acessíveis copiados para o armazenamento privado do aplicativo."
-        } else avisoMidias = "Permissão não concedida. Não foi possível importar as mídias."
-    }
-    val escolherPastaStatus = androidx.activity.compose.rememberLauncherForActivityResult(ActivityResultContracts.OpenDocumentTree()) { uri ->
-        if (uri != null) {
-            try {
-                context.contentResolver.takePersistableUriPermission(
-                    uri, Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_GRANT_WRITE_URI_PERMISSION
-                )
-            } catch (_: Exception) { }
-            context.getSharedPreferences("arquivo_azul", android.content.Context.MODE_PRIVATE)
-                .edit().putString("status_tree_uri", uri.toString()).apply()
-            midias = MediaArchive.importStatusTree(context, uri)
-            avisoMidias = "Pasta selecionada. Foram copiadas as fotos e os vídeos acessíveis."
-        }
-    }
-    var statusSelecionado by remember { mutableStateOf<ArchivedMedia?>(null) }
-    var contato by remember { mutableStateOf<String?>(null) }
+private fun TelaConversas() {
+    var busca by remember { mutableStateOf("") }
+    var filtro by remember { mutableStateOf("Todas") }
     var aba by remember { mutableStateOf("Conversas") }
-    var mostrarConfiguracoes by remember { mutableStateOf(false) }
-    val contatos = mensagens.map { it.sender }.distinct()
-    val filtradas = mensagens.filter { it.sender == contato }
-    val contagensNaoLidas = mensagens.groupBy { it.sender }
-        .mapValues { (_, itens) -> itens.sumOf { it.unreadCount.coerceAtLeast(0) } }
-    LaunchedEffect(resumeVersion) {
-        // Recarrega as notificações arquivadas sempre que o usuário volta ao app.
-        mensagens = ArchiveStore.all(context)
-        val autorizado = permissaoMidia.all {
-            context.checkSelfPermission(it) == PackageManager.PERMISSION_GRANTED
-        }
-        if (autorizado) midias = MediaArchive.importAvailable(context)
-        val statusUri = context.getSharedPreferences("arquivo_azul", android.content.Context.MODE_PRIVATE)
-            .getString("status_tree_uri", null)
-        if (statusUri != null) {
-            try { midias = MediaArchive.importStatusTree(context, android.net.Uri.parse(statusUri)) }
-            catch (_: Exception) { }
-        }
+    val filtros = listOf("Todas", "Favoritos", "Grupos  1", "+")
+    val lista = conversasDemo.filter {
+        it.nome.contains(busca, ignoreCase = true) || it.mensagem.contains(busca, ignoreCase = true)
     }
 
-    Column(Modifier.fillMaxSize().background(Fundo)) {
+    Column(Modifier.fillMaxSize().background(Color.White)) {
         Row(
-            Modifier.fillMaxWidth().background(Color.White).padding(start = 16.dp, end = 6.dp, top = 12.dp, bottom = 12.dp),
+            Modifier.fillMaxWidth().height(68.dp).padding(start = 28.dp, end = 18.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            if (mostrarConfiguracoes || contato != null || statusSelecionado != null) {
-                IconButton(onClick = {
-                    when { mostrarConfiguracoes -> mostrarConfiguracoes = false; statusSelecionado != null -> statusSelecionado = null; else -> contato = null }
-                }) {
-                    Icon(Icons.Default.ArrowBack, contentDescription = "Voltar", tint = Color(0xFF111827))
-                }
-            }
-            androidx.compose.material3.Text(
-                when {
-                    mostrarConfiguracoes -> "Configurações"
-                    statusSelecionado != null -> "Status"
-                    contato != null -> contato!!
-                    else -> "Conversas"
-                },
+            Text("WhatsApp", modifier = Modifier.weight(1f), color = Verde,
+                fontSize = 28.sp, fontWeight = FontWeight.Bold, letterSpacing = (-0.7).sp)
+            Icon(Icons.Default.CameraAlt, contentDescription = "Câmera",
+                tint = Texto, modifier = Modifier.size(29.dp))
+            Spacer(Modifier.width(27.dp))
+            Icon(Icons.Default.MoreVert, contentDescription = "Mais opções",
+                tint = Texto, modifier = Modifier.size(27.dp))
+        }
+
+        Row(
+            Modifier.fillMaxWidth().padding(horizontal = 22.dp, vertical = 8.dp)
+                .height(58.dp).clip(RoundedCornerShape(32.dp)).background(FundoBusca)
+                .padding(horizontal = 18.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Icon(Icons.Default.Search, contentDescription = "Pesquisar",
+                tint = Cinza, modifier = Modifier.size(27.dp))
+            Spacer(Modifier.width(18.dp))
+            BasicTextField(
+                value = busca,
+                onValueChange = { busca = it },
+                singleLine = true,
+                textStyle = androidx.compose.ui.text.TextStyle(color = Texto, fontSize = 17.sp),
                 modifier = Modifier.weight(1f),
-                color = Color(0xFF111827),
-                fontSize = if (aba == "Status") 32.sp else 26.sp,
-                fontWeight = FontWeight.Normal
+                decorationBox = { inner ->
+                    Box {
+                        if (busca.isEmpty()) Text("Pergunte à Meta AI ou pesquise",
+                            color = Cinza, fontSize = 17.sp, maxLines = 1)
+                        inner()
+                    }
+                }
             )
-            if (!mostrarConfiguracoes && contato == null && statusSelecionado == null) {
-                IconButton(onClick = { mostrarConfiguracoes = true }) {
-                    Icon(Icons.Default.Settings, contentDescription = "Configurações", tint = Color(0xFF111827))
+        }
+
+        Row(
+            Modifier.fillMaxWidth().horizontalScroll(rememberScrollState())
+                .padding(start = 31.dp, top = 15.dp, bottom = 18.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            filtros.forEach { item ->
+                val selecionado = filtro == item
+                Box(
+                    Modifier.padding(end = 13.dp).clip(CircleShape)
+                        .background(if (selecionado) VerdeClaro else Color.White)
+                        .border(1.5.dp, if (selecionado) Color(0xFFB8DDBB) else Color(0xFFD5D7D8), CircleShape)
+                        .clickable { filtro = item }
+                        .padding(horizontal = if (item == "+") 17.dp else 19.dp, vertical = 11.dp),
+                    contentAlignment = Alignment.Center
+                ) {
+                    if (item == "+") Icon(Icons.Default.Add, contentDescription = "Adicionar filtro",
+                        tint = Cinza, modifier = Modifier.size(22.dp))
+                    else Text(item, color = if (selecionado) Color(0xFF185C3A) else Cinza,
+                        fontSize = 16.sp, fontWeight = FontWeight.SemiBold)
                 }
             }
         }
 
-        if (mostrarConfiguracoes) {
-            Column(Modifier.fillMaxWidth().padding(20.dp)) {
-                androidx.compose.material3.Text("Privacidade e armazenamento", fontSize = 17.sp, fontWeight = FontWeight.Bold, color = Color(0xFF182230))
-                androidx.compose.material3.Text(
-                    "Autorize o acesso às notificações para guardar prévias compatíveis das mensagens recebidas.",
-                    color = Color(0xFF667085), fontSize = 13.sp, modifier = Modifier.padding(top = 6.dp, bottom = 16.dp)
-                )
-                Button(
-                    onClick = { context.startActivity(Intent(Settings.ACTION_NOTIFICATION_LISTENER_SETTINGS)) },
-                    modifier = Modifier.fillMaxWidth(),
-                    colors = ButtonDefaults.buttonColors(containerColor = Azul)
-                ) { androidx.compose.material3.Text("Configurar acesso às notificações") }
-                Button(
-                    onClick = { escolherPastaStatus.launch(null) },
-                    modifier = Modifier.fillMaxWidth().padding(top = 8.dp),
-                    colors = ButtonDefaults.buttonColors(containerColor = AzulClaro, contentColor = Azul)
-                ) { androidx.compose.material3.Text("Selecionar pasta de Status do WhatsApp") }
-                Button(
-                    onClick = { mensagens = ArchiveStore.all(context) },
-                    modifier = Modifier.fillMaxWidth().padding(top = 8.dp),
-                    colors = ButtonDefaults.buttonColors(containerColor = AzulClaro, contentColor = Azul)
-                ) { androidx.compose.material3.Text("Atualizar arquivo") }
-                androidx.compose.material3.Text(
-                    "O aplicativo guarda apenas prévias recebidas como notificações. Ele não acessa conversas privadas nem garante recuperar mensagens ou mídias apagadas.",
-                    color = Color(0xFF667085), fontSize = 12.sp, modifier = Modifier.padding(top = 18.dp)
-                )
+        LazyColumn(
+            modifier = Modifier.weight(1f),
+            contentPadding = PaddingValues(top = 3.dp, bottom = 8.dp)
+        ) {
+            items(lista) { conversa -> LinhaConversa(conversa) }
+        }
+
+        Row(
+            Modifier.fillMaxWidth().height(82.dp).border(0.5.dp, Linha)
+                .background(Color.White).padding(horizontal = 8.dp),
+            horizontalArrangement = Arrangement.SpaceAround,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            ItemNavegacao("Conversas", Icons.Default.Chat, aba == "Conversas") { aba = "Conversas" }
+            ItemNavegacao("Atualizações", Icons.Default.DonutLarge, aba == "Atualizações") { aba = "Atualizações" }
+            ItemNavegacao("Comunidades", Icons.Default.Groups, aba == "Comunidades") { aba = "Comunidades" }
+            ItemNavegacao("Ligações", Icons.Default.Call, aba == "Ligações") { aba = "Ligações" }
+        }
+    }
+}
+
+@Composable
+private fun LinhaConversa(item: ConversaDemo) {
+    Row(
+        Modifier.fillMaxWidth().heightIn(min = 116.dp)
+            .clickable { }.padding(start = 22.dp, end = 17.dp, top = 10.dp, bottom = 10.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Box(
+            Modifier.size(82.dp).clip(CircleShape).background(item.cor)
+                .border(3.dp, Color(0xFFE0E3E4), CircleShape),
+            contentAlignment = Alignment.Center
+        ) {
+            Text(item.avatar, color = if (item.avatar == "Feira\ndo Rolo") Color.White else Color(0xFF72513F),
+                fontSize = if (item.avatar.length > 2) 12.sp else 25.sp,
+                fontWeight = FontWeight.Bold, lineHeight = 13.sp)
+        }
+        Column(Modifier.weight(1f).padding(start = 20.dp)) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text(item.nome, modifier = Modifier.weight(1f), color = Texto,
+                    fontSize = 18.sp, fontWeight = FontWeight.SemiBold,
+                    maxLines = 1, overflow = TextOverflow.Ellipsis)
+                Text(item.horario, color = if (item.horario == "Ontem") Verde else Cinza,
+                    fontSize = 14.sp)
             }
-        } else if (statusSelecionado != null) {
-            val item = statusSelecionado!!
-            val indice = statusSalvos.indexOfFirst { it.file.absolutePath == item.file.absolutePath }
-            Box(Modifier.fillMaxSize().background(Color.Black)) {
-                if (item.isVideo) {
-                    AndroidView(
-                        factory = { ctx -> VideoView(ctx).apply {
-                            setVideoURI(Uri.fromFile(item.file))
-                            setOnPreparedListener { it.isLooping = true; start() }
-                        } },
-                        modifier = Modifier.fillMaxSize()
-                    )
-                } else {
-                    AndroidView(
-                        factory = { ctx -> ImageView(ctx).apply {
-                            scaleType = ImageView.ScaleType.FIT_CENTER
-                            setImageURI(Uri.fromFile(item.file))
-                        } },
-                        modifier = Modifier.fillMaxSize()
-                    )
+            Spacer(Modifier.height(5.dp))
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                if (item.enviada) {
+                    Text("✓✓", color = Color(0xFF8C969B), fontSize = 16.sp)
+                    Spacer(Modifier.width(5.dp))
                 }
-                Row(Modifier.align(Alignment.TopCenter).fillMaxWidth().padding(horizontal = 12.dp, vertical = 18.dp),
-                    horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-                    statusSalvos.forEachIndexed { i, _ ->
-                        Box(Modifier.weight(1f).height(3.dp).background(
-                            if (i <= indice) Color.White else Color.White.copy(alpha = 0.35f),
-                            RoundedCornerShape(4.dp)))
-                    }
+                Text(item.mensagem, modifier = Modifier.weight(1f), color = Cinza,
+                    fontSize = 16.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                if (item.silenciada) {
+                    Icon(Icons.Default.NotificationsOff, contentDescription = "Silenciada",
+                        tint = Color(0xFF92999D), modifier = Modifier.size(19.dp))
+                    Spacer(Modifier.width(5.dp))
                 }
-                IconButton(onClick = {
-                    avisoMidias = if (salvarNaGaleria(context, item)) "Status salvo na galeria do aparelho." else "Não foi possível salvar este status na galeria."
-                }, modifier = Modifier.align(Alignment.TopEnd).padding(top = 28.dp, end = 12.dp)) {
-                    Icon(Icons.Default.Download, contentDescription = "Baixar status", tint = Color.White)
-                }
-                if (indice > 0) {
-                    IconButton(onClick = { statusSelecionado = statusSalvos[indice - 1] },
-                        modifier = Modifier.align(Alignment.CenterStart).size(56.dp)) {
-                        Icon(Icons.Default.ChevronLeft, contentDescription = "Status anterior",
-                            tint = Color.White, modifier = Modifier.size(42.dp))
+                if (item.naoLidas > 0) {
+                    Box(Modifier.size(29.dp).clip(CircleShape).background(Verde),
+                        contentAlignment = Alignment.Center) {
+                        Text(item.naoLidas.toString(), color = Color.White,
+                            fontSize = 14.sp, fontWeight = FontWeight.Bold)
                     }
-                }
-                if (indice >= 0 && indice < statusSalvos.lastIndex) {
-                    IconButton(onClick = { statusSelecionado = statusSalvos[indice + 1] },
-                        modifier = Modifier.align(Alignment.CenterEnd).size(56.dp)) {
-                        Icon(Icons.Default.ChevronRight, contentDescription = "Próximo status",
-                            tint = Color.White, modifier = Modifier.size(42.dp))
-                    }
-                }
-                androidx.compose.material3.Text(
-                    "${indice + 1} de ${statusSalvos.size} • toque nas laterais para passar",
-                    color = Color.White, fontSize = 11.sp,
-                    modifier = Modifier.align(Alignment.BottomCenter).padding(16.dp)
-                )
-            }
-        } else if (contato != null) {
-            LazyColumn(contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp)) {
-                items(filtradas) { item ->
-                    Column(
-                        Modifier.fillMaxWidth().padding(vertical = 6.dp)
-                            .background(Color.White, RoundedCornerShape(14.dp)).padding(13.dp)
-                    ) {
-                        androidx.compose.material3.Text(item.message, color = Color(0xFF182230), fontSize = 14.sp)
-                        androidx.compose.material3.Text(
-                            SimpleDateFormat("dd/MM/yyyy HH:mm", Locale("pt", "BR")).format(Date(item.timestamp)),
-                            color = Color(0xFF98A2B3), fontSize = 11.sp,
-                            modifier = Modifier.padding(top = 7.dp)
-                        )
-                    }
-                }
-            }
-        } else {
-            // A navegação principal fica fixa no rodapé.
-            if (aba == "Conversas") {
-                if (contatos.isEmpty()) {
-                    Column(
-                        Modifier.fillMaxWidth().padding(horizontal = 28.dp, vertical = 72.dp),
-                        horizontalAlignment = Alignment.CenterHorizontally
-                    ) {
-                        androidx.compose.material3.Text("💬", fontSize = 38.sp)
-                        androidx.compose.material3.Text(
-                            "Suas conversas aparecerão aqui",
-                            fontWeight = FontWeight.SemiBold,
-                            color = Color(0xFF182230),
-                            modifier = Modifier.padding(top = 12.dp)
-                        )
-                        androidx.compose.material3.Text(
-                            "As prévias recebidas serão organizadas por contato.",
-                            color = Color(0xFF667085), fontSize = 13.sp,
-                            modifier = Modifier.padding(top = 6.dp)
-                        )
-                    }
-                } else {
-                    LazyColumn {
-                        items(contatos) { nome ->
-                            val ultima = mensagens.first { it.sender == nome }
-                            val agora = java.util.Calendar.getInstance()
-                            val dataMensagem = java.util.Calendar.getInstance().apply { timeInMillis = ultima.timestamp }
-                            val mesmoDia = agora.get(java.util.Calendar.YEAR) == dataMensagem.get(java.util.Calendar.YEAR) &&
-                                agora.get(java.util.Calendar.DAY_OF_YEAR) == dataMensagem.get(java.util.Calendar.DAY_OF_YEAR)
-                            val ontem = java.util.Calendar.getInstance().apply { add(java.util.Calendar.DAY_OF_YEAR, -1) }
-                            val foiOntem = ontem.get(java.util.Calendar.YEAR) == dataMensagem.get(java.util.Calendar.YEAR) &&
-                                ontem.get(java.util.Calendar.DAY_OF_YEAR) == dataMensagem.get(java.util.Calendar.DAY_OF_YEAR)
-                            val horario = when {
-                                mesmoDia -> SimpleDateFormat("HH:mm", Locale("pt", "BR")).format(Date(ultima.timestamp))
-                                foiOntem -> "Ontem"
-                                else -> SimpleDateFormat("dd/MM/yy", Locale("pt", "BR")).format(Date(ultima.timestamp))
-                            }
-                            Row(
-                                Modifier.fillMaxWidth()
-                                    .clickable {
-                                        ArchiveStore.markRead(context, nome)
-                                        mensagens = ArchiveStore.all(context)
-                                        contato = nome
-                                    }
-                                    .padding(horizontal = 16.dp, vertical = 10.dp),
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
-                                Box(
-                                    Modifier.size(58.dp).background(AzulClaro, CircleShape),
-                                    contentAlignment = Alignment.Center
-                                ) {
-                                    androidx.compose.material3.Text(
-                                        nome.trim().take(1).uppercase(),
-                                        color = Azul,
-                                        fontWeight = FontWeight.Bold,
-                                        fontSize = 20.sp
-                                    )
-                                }
-                                Column(
-                                    Modifier.weight(1f).padding(start = 13.dp),
-                                    verticalArrangement = Arrangement.Center
-                                ) {
-                                    Row(
-                                        Modifier.fillMaxWidth(),
-                                        verticalAlignment = Alignment.CenterVertically
-                                    ) {
-                                        androidx.compose.material3.Text(
-                                            nome,
-                                            modifier = Modifier.weight(1f),
-                                            fontWeight = FontWeight.SemiBold,
-                                            color = Color(0xFF111827),
-                                            fontSize = 17.sp,
-                                            maxLines = 1
-                                        )
-                                        androidx.compose.material3.Text(
-                                            horario,
-                                            color = if (mesmoDia) Color(0xFF269B68) else Color(0xFF667085),
-                                            fontSize = 12.sp
-                                        )
-                                    }
-                                    androidx.compose.material3.Text(
-                                        ultima.message,
-                                        color = Color(0xFF667085),
-                                        fontSize = 14.sp,
-                                        maxLines = 1,
-                                        modifier = Modifier.padding(top = 4.dp)
-                                    )
-                                }
-                                val naoLidas = contagensNaoLidas[nome] ?: 0
-                                if (naoLidas > 0) {
-                                    Box(
-                                        Modifier.padding(start = 8.dp)
-                                            .height(22.dp)
-                                            .widthIn(min = 22.dp)
-                                            .clip(CircleShape)
-                                            .background(Azul)
-                                            .padding(horizontal = 6.dp),
-                                        contentAlignment = Alignment.Center
-                                    ) {
-                                        androidx.compose.material3.Text(
-                                            if (naoLidas > 99) "99+" else naoLidas.toString(),
-                                            color = Color.White,
-                                            fontSize = 11.sp,
-                                            fontWeight = FontWeight.Bold
-                                        )
-                                    }
-                                }
-                            }
-                        }
-                    }
-                }
-            } else if (aba == "Status") {
-                Column(Modifier.fillMaxSize()) {
-                    androidx.compose.material3.Text(
-                        "Atualizações",
-                        fontWeight = FontWeight.Bold,
-                        color = Color(0xFF182230),
-                        fontSize = 30.sp,
-                        modifier = Modifier.padding(start = 16.dp, top = 14.dp, bottom = 18.dp)
-                    )
-                    androidx.compose.material3.Text(
-                        "Status",
-                        fontSize = 21.sp,
-                        fontWeight = FontWeight.Bold,
-                        color = Color(0xFF182230),
-                        modifier = Modifier.padding(start = 16.dp, bottom = 10.dp)
-                    )
-                    if (statusSalvos.isEmpty()) {
-                        androidx.compose.material3.Text(
-                            "Os status visualizados e disponíveis na pasta do WhatsApp aparecerão aqui. Para começar, selecione a pasta .Statuses nas Configurações.",
-                            color = Color(0xFF667085),
-                            fontSize = 13.sp,
-                            modifier = Modifier.padding(horizontal = 18.dp, vertical = 12.dp)
-                        )
-                    } else {
-                        androidx.compose.material3.Text(
-                            "ATUALIZAÇÕES RECENTES",
-                            fontSize = 11.sp,
-                            fontWeight = FontWeight.Bold,
-                            color = Color(0xFF667085),
-                            modifier = Modifier.padding(start = 16.dp, top = 8.dp, bottom = 8.dp)
-                        )
-                        LazyColumn {
-                            items(statusSalvos) { status ->
-                                Row(
-                                    Modifier.fillMaxWidth()
-                                        .clickable { statusSelecionado = status }
-                                        .padding(horizontal = 16.dp, vertical = 9.dp),
-                                    verticalAlignment = Alignment.CenterVertically
-                                ) {
-                                    Box(
-                                        Modifier.size(66.dp)
-                                            .background(Azul, CircleShape)
-                                            .padding(3.dp)
-                                            .background(Color.White, CircleShape)
-                                            .padding(3.dp)
-                                            .clip(CircleShape)
-                                            .background(AzulClaro, CircleShape)
-                                    ) {
-                                        AndroidView(
-                                            factory = { ctx -> ImageView(ctx).apply {
-                                                scaleType = ImageView.ScaleType.CENTER_CROP
-                                                if (status.isVideo) {
-                                                    val retriever = android.media.MediaMetadataRetriever()
-                                                    try {
-                                                        retriever.setDataSource(status.file.absolutePath)
-                                                        setImageBitmap(retriever.getFrameAtTime(0))
-                                                    } catch (_: Exception) {
-                                                        setImageResource(android.R.drawable.ic_media_play)
-                                                    } finally {
-                                                        try { retriever.release() } catch (_: Exception) { }
-                                                    }
-                                                } else {
-                                                    setImageURI(Uri.fromFile(status.file))
-                                                }
-                                            } },
-                                            modifier = Modifier.fillMaxSize().clip(CircleShape)
-                                        )
-                                    }
-                                    Column(Modifier.weight(1f).padding(start = 13.dp)) {
-                                        androidx.compose.material3.Text(
-                                            status.name.substringBeforeLast('.', status.name),
-                                            color = Color(0xFF182230),
-                                            fontWeight = FontWeight.SemiBold,
-                                            fontSize = 16.sp,
-                                            maxLines = 1
-                                        )
-                                        androidx.compose.material3.Text(
-                                            if (status.isVideo) "Vídeo • toque para visualizar"
-                                            else "Foto • toque para visualizar",
-                                            color = Color(0xFF667085),
-                                            fontSize = 13.sp,
-                                            modifier = Modifier.padding(top = 4.dp)
-                                        )
-                                    }
-                                    Icon(
-                                        Icons.Default.ChevronRight,
-                                        contentDescription = "Abrir status",
-                                        tint = Color(0xFF98A2B3)
-                                    )
-                                }
-                            }
-                        }
-                    }
-                }
-            } else {
-                Column(Modifier.fillMaxSize().padding(16.dp)) {
-                    androidx.compose.material3.Text("Arquivo de fotos e vídeos", fontWeight = FontWeight.Bold,
-                        color = Color(0xFF182230), fontSize = 17.sp)
-                    androidx.compose.material3.Text(avisoMidias, color = Color(0xFF667085),
-                        fontSize = 12.sp, modifier = Modifier.padding(top = 6.dp, bottom = 12.dp))
-                    Button(onClick = {
-                        val granted = permissaoMidia.all {
-                            context.checkSelfPermission(it) == PackageManager.PERMISSION_GRANTED
-                        }
-                        if (granted) {
-                            midias = MediaArchive.importAvailable(context)
-                            avisoMidias = "Importação concluída. Só aparecem arquivos acessíveis ao Android."
-                        } else pedirPermissao.launch(permissaoMidia)
-                    }, modifier = Modifier.fillMaxWidth(),
-                        colors = ButtonDefaults.buttonColors(containerColor = Azul)) {
-                        androidx.compose.material3.Text("Importar mídias do WhatsApp")
-                    }
-                    androidx.compose.material3.Text("${midias.size} arquivo(s) guardado(s) neste aparelho",
-                        color = Azul, fontSize = 13.sp, modifier = Modifier.padding(top = 14.dp, bottom = 8.dp))
-                    LazyColumn {
-                        items(midias) { media ->
-                            Row(Modifier.fillMaxWidth().padding(vertical = 8.dp),
-                                verticalAlignment = Alignment.CenterVertically) {
-                                androidx.compose.material3.Text(if (media.isVideo) "▶" else "▧",
-                                    color = Azul, fontSize = 22.sp)
-                                Column(Modifier.weight(1f).padding(start = 12.dp)) {
-                                    androidx.compose.material3.Text(media.name, color = Color(0xFF182230),
-                                        fontSize = 13.sp, maxLines = 2)
-                                    androidx.compose.material3.Text(if (media.isVideo) "Vídeo disponível para baixar" else "Foto disponível para baixar",
-                                        color = Color(0xFF667085), fontSize = 11.sp)
-                                }
-                                IconButton(onClick = {
-                                    avisoMidias = if (salvarNaGaleria(context, media))
-                                        "Mídia salva na galeria do aparelho."
-                                    else "Não foi possível salvar esta mídia."
-                                }) {
-                                    Icon(Icons.Default.Download, contentDescription = "Baixar mídia", tint = Azul)
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-        if (!mostrarConfiguracoes && contato == null && statusSelecionado == null) {
-            Row(
-                Modifier.fillMaxWidth().background(Color.White)
-                    .padding(horizontal = 8.dp, vertical = 8.dp),
-                horizontalArrangement = Arrangement.SpaceAround,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Column(
-                    Modifier.weight(1f).padding(vertical = 5.dp),
-                    horizontalAlignment = Alignment.CenterHorizontally
-                ) {
-                    androidx.compose.material3.Text("▤", color = Azul, fontSize = 21.sp)
-                    androidx.compose.material3.Text(
-                        "Conversas",
-                        color = Azul,
-                        fontSize = 11.sp,
-                        fontWeight = FontWeight.Bold
-                    )
                 }
             }
         }
+    }
+}
+
+@Composable
+private fun ItemNavegacao(
+    titulo: String,
+    icone: ImageVector,
+    selecionado: Boolean,
+    onClick: () -> Unit
+) {
+    Column(
+        Modifier.widthIn(min = 75.dp).clip(RoundedCornerShape(24.dp))
+            .clickable(onClick = onClick).padding(horizontal = 5.dp, vertical = 7.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.Center
+    ) {
+        Box(
+            Modifier.width(78.dp).height(43.dp)
+                .clip(RoundedCornerShape(25.dp))
+                .background(if (selecionado) VerdeClaro else Color.Transparent),
+            contentAlignment = Alignment.Center
+        ) {
+            Icon(icone, contentDescription = titulo,
+                tint = Color(0xFF172027), modifier = Modifier.size(27.dp))
         }
+        Spacer(Modifier.height(3.dp))
+        Text(titulo, color = Texto, fontSize = 12.sp,
+            fontWeight = if (selecionado) FontWeight.Bold else FontWeight.Medium,
+            maxLines = 1)
     }
 }
