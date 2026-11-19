@@ -316,7 +316,11 @@ private fun TelaPrincipal(resumeVersion: Int) {
                             }
                             Row(
                                 Modifier.fillMaxWidth()
-                                    .clickable { contato = nome }
+                                    .clickable {
+                                        ArchiveStore.markRead(context, nome)
+                                        mensagens = ArchiveStore.all(context)
+                                        contato = nome
+                                    }
                                     .padding(horizontal = 16.dp, vertical = 10.dp),
                                 verticalAlignment = Alignment.CenterVertically
                             ) {
@@ -360,6 +364,24 @@ private fun TelaPrincipal(resumeVersion: Int) {
                                         maxLines = 1,
                                         modifier = Modifier.padding(top = 4.dp)
                                     )
+                                }
+                                if (ultima.unreadCount > 0) {
+                                    Box(
+                                        Modifier.padding(start = 8.dp)
+                                            .height(22.dp)
+                                            .widthIn(min = 22.dp)
+                                            .clip(CircleShape)
+                                            .background(Color(0xFF25A568))
+                                            .padding(horizontal = 6.dp),
+                                        contentAlignment = Alignment.Center
+                                    ) {
+                                        androidx.compose.material3.Text(
+                                            if (ultima.unreadCount > 99) "99+" else ultima.unreadCount.toString(),
+                                            color = Color.White,
+                                            fontSize = 11.sp,
+                                            fontWeight = FontWeight.Bold
+                                        )
+                                    }
                                 }
                             }
                         }
