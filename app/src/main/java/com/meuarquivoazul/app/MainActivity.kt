@@ -72,6 +72,12 @@ private fun TelaPrincipal() {
     var mostrarConfiguracoes by remember { mutableStateOf(false) }
     val contatos = mensagens.map { it.sender }.distinct()
     val filtradas = mensagens.filter { it.sender == contato }
+    LaunchedEffect(Unit) {
+        val autorizado = permissaoMidia.all {
+            context.checkSelfPermission(it) == PackageManager.PERMISSION_GRANTED
+        }
+        if (autorizado) midias = MediaArchive.importAvailable(context)
+    }
 
     Column(Modifier.fillMaxSize().background(Fundo)) {
         Row(
