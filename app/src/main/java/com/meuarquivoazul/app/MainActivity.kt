@@ -271,70 +271,78 @@ private fun TelaConversas() {
 @Composable
 private fun TelaAtualizacoes() {
     val context = LocalContext.current
-    val midiasSalvas = remember { MediaArchive.all(context).filter { it.file.name.startsWith("status_") } }
+    var atualizar by remember { mutableIntStateOf(0) }
+    val midiasSalvas = remember(atualizar) {
+        MediaArchive.all(context).filter { it.file.name.startsWith("status_") }
+    }
 
     Column(Modifier.fillMaxSize().background(Color.White)) {
         Row(
-            Modifier.fillMaxWidth().padding(start = 20.dp, end = 20.dp, top = 16.dp, bottom = 14.dp),
+            Modifier.fillMaxWidth().padding(start = 18.dp, end = 18.dp, top = 10.dp, bottom = 8.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Text("Status", color = Texto, fontSize = 22.sp, fontWeight = FontWeight.Bold,
+            Text("Atualizações", color = Texto, fontSize = 23.sp, fontWeight = FontWeight.Bold,
                 modifier = Modifier.weight(1f))
-            Box(Modifier.size(42.dp).clip(CircleShape).background(FundoBusca),
-                contentAlignment = Alignment.Center) {
-                Text("▣", color = Texto, fontSize = 21.sp)
-            }
+            TextButton(onClick = { atualizar++ }) { Text("Atualizar", color = Verde) }
         }
-        LazyRow(
-            contentPadding = PaddingValues(start = 20.dp, end = 20.dp, bottom = 18.dp),
-            horizontalArrangement = Arrangement.spacedBy(9.dp)
+
+        Row(
+            Modifier.fillMaxWidth().clickable { }.padding(horizontal = 18.dp, vertical = 10.dp),
+            verticalAlignment = Alignment.CenterVertically
         ) {
-            item {
+            Box(contentAlignment = Alignment.BottomEnd) {
                 Box(
-                    Modifier.width(112.dp).height(200.dp).clip(RoundedCornerShape(20.dp))
-                        .background(Color(0xFFF5F4F2)).border(1.dp, Color(0xFFD8D8D8), RoundedCornerShape(20.dp))
-                        .clickable { },
+                    Modifier.size(58.dp).clip(CircleShape)
+                        .background(Color(0xFFE7E9E7))
+                        .border(2.dp, Color(0xFFD7DAD7), CircleShape),
                     contentAlignment = Alignment.Center
                 ) {
-                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                        Box(Modifier.size(52.dp).clip(CircleShape).background(Color(0xFFE4E8E4)),
-                            contentAlignment = Alignment.Center) {
-                            Text("+", color = Verde, fontSize = 34.sp, fontWeight = FontWeight.Light)
-                        }
-                        Spacer(Modifier.height(12.dp))
-                        Text("Adicionar\nstatus", color = Texto, fontSize = 14.sp,
-                            fontWeight = FontWeight.SemiBold, textAlign = androidx.compose.ui.text.style.TextAlign.Center)
-                    }
+                    Text("Você", color = Texto, fontSize = 13.sp, fontWeight = FontWeight.SemiBold)
+                }
+                Box(Modifier.size(21.dp).clip(CircleShape).background(Verde)
+                    .border(2.dp, Color.White, CircleShape), contentAlignment = Alignment.Center) {
+                    Text("+", color = Color.White, fontSize = 16.sp, fontWeight = FontWeight.Bold)
                 }
             }
-            items(midiasSalvas) { media ->
-                Box(
-                    Modifier.width(112.dp).height(200.dp).clip(RoundedCornerShape(20.dp))
-                        .background(Color(0xFF34434A)),
-                    contentAlignment = Alignment.BottomStart
-                ) {
-                    Column(Modifier.fillMaxWidth().padding(10.dp)) {
-                        Text(if (media.isVideo) "▶ Vídeo salvo" else "Foto salva",
-                            color = Color.White, fontSize = 13.sp, fontWeight = FontWeight.SemiBold,
-                            maxLines = 2, overflow = TextOverflow.Ellipsis)
-                    }
-                }
+            Column(Modifier.padding(start = 14.dp)) {
+                Text("Meu status", color = Texto, fontSize = 16.sp, fontWeight = FontWeight.SemiBold)
+                Text("Toque para adicionar uma atualização", color = Cinza, fontSize = 13.sp)
             }
         }
-        Text("Atualizações recentes", Modifier.padding(start = 20.dp, top = 2.dp, bottom = 8.dp),
-            color = Texto, fontSize = 20.sp, fontWeight = FontWeight.Bold)
-        if (midiasSalvas.isEmpty()) {
-            Text(
-                "Os status arquivados aparecerão aqui quando forem importados da pasta de status do WhatsApp.",
-                Modifier.padding(horizontal = 20.dp, vertical = 8.dp),
-                color = Cinza, fontSize = 14.sp
-            )
+
+        androidx.compose.material3.Divider(color = Linha, modifier = Modifier.padding(start = 88.dp))
+
+        if (midiasSalvas.isNotEmpty()) {
+            Text("Atualizações recentes", Modifier.padding(start = 18.dp, top = 14.dp, bottom = 4.dp),
+                color = Cinza, fontSize = 14.sp, fontWeight = FontWeight.SemiBold)
+            LazyColumn(Modifier.fillMaxWidth()) {
+                items(midiasSalvas) { media ->
+                    Row(
+                        Modifier.fillMaxWidth().clickable { }.padding(horizontal = 18.dp, vertical = 9.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Box(
+                            Modifier.size(58.dp).clip(CircleShape)
+                                .border(2.dp, Verde, CircleShape).padding(4.dp)
+                                .clip(CircleShape).background(Color(0xFFE8ECE9)),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Text(if (media.isVideo) "▶" else "▧", color = Verde, fontSize = 21.sp)
+                        }
+                        Column(Modifier.weight(1f).padding(start = 14.dp)) {
+                            Text(if (media.isVideo) "Vídeo arquivado" else "Foto arquivada",
+                                color = Texto, fontSize = 16.sp, fontWeight = FontWeight.SemiBold)
+                            Text(media.name, color = Cinza, fontSize = 12.sp,
+                                maxLines = 1, overflow = TextOverflow.Ellipsis)
+                        }
+                    }
+                    androidx.compose.material3.Divider(color = Linha, modifier = Modifier.padding(start = 90.dp))
+                }
+            }
         } else {
-            Text(
-                "\${midiasSalvas.size} mídia(s) de status arquivada(s). A identificação do contato ainda não é fornecida pela importação atual.",
-                Modifier.padding(horizontal = 20.dp, vertical = 4.dp),
-                color = Cinza, fontSize = 13.sp
-            )
+            Text("Nenhuma atualização arquivada. Importe a pasta de status do WhatsApp para exibir as mídias aqui.",
+                Modifier.padding(horizontal = 20.dp, vertical = 14.dp),
+                color = Cinza, fontSize = 14.sp)
         }
     }
 }
