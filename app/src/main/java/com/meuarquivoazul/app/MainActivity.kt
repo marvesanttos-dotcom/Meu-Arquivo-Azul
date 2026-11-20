@@ -15,6 +15,7 @@ import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -162,7 +163,7 @@ private fun TelaConversas() {
             verticalAlignment = Alignment.CenterVertically
         ) {
             Column(Modifier.weight(1f), verticalArrangement = Arrangement.Center) {
-                Text(nomeApp, modifier = Modifier.combinedClickable(
+                Text(if (aba == "Atualizações") "Atualizações" else nomeApp, modifier = Modifier.combinedClickable(
                     onClick = { },
                     onLongClick = {
                         nomeEditado = nomeApp
@@ -193,7 +194,7 @@ private fun TelaConversas() {
             }
         }
 
-        Row(
+        if (aba == "Conversas" && !mostrarArquivo) Row(
             Modifier.fillMaxWidth()
                 .padding(start = 31.dp, top = 15.dp, bottom = 18.dp),
             verticalAlignment = Alignment.CenterVertically
@@ -245,6 +246,8 @@ private fun TelaConversas() {
                     }
                 }
             }
+        } else if (aba == "Atualizações") {
+            TelaAtualizacoes()
         } else {
             LazyColumn(Modifier.weight(1f), contentPadding = PaddingValues(top = 3.dp, bottom = 8.dp)) {
                 items(lista) { conversa -> LinhaConversa(conversa) }
@@ -257,9 +260,81 @@ private fun TelaConversas() {
             horizontalArrangement = Arrangement.Center,
             verticalAlignment = Alignment.CenterVertically
         ) {
-            ItemNavegacao("Conversas", Icons.Default.Chat, aba == "Conversas") { aba = "Conversas" }
-            ItemNavegacao("Atualizações", Icons.Default.DonutLarge, aba == "Atualizações") { aba = "Atualizações" }
+            ItemNavegacao("Conversas", Icons.Default.Chat, aba == "Conversas") { aba = "Conversas"; mostrarArquivo = false }
+            ItemNavegacao("Atualizações", Icons.Default.DonutLarge, aba == "Atualizações") { aba = "Atualizações"; mostrarArquivo = false }
             Spacer(Modifier.width(28.dp))
+        }
+    }
+}
+
+
+@Composable
+private fun TelaAtualizacoes() {
+    val context = LocalContext.current
+    val midiasSalvas = remember { MediaArchive.all(context).filter { it.file.name.startsWith("status_") } }
+
+    Column(Modifier.fillMaxSize().background(Color.White)) {
+        Row(
+            Modifier.fillMaxWidth().padding(start = 20.dp, end = 20.dp, top = 16.dp, bottom = 14.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text("Status", color = Texto, fontSize = 22.sp, fontWeight = FontWeight.Bold,
+                modifier = Modifier.weight(1f))
+            Box(Modifier.size(42.dp).clip(CircleShape).background(FundoBusca),
+                contentAlignment = Alignment.Center) {
+                Text("▣", color = Texto, fontSize = 21.sp)
+            }
+        }
+        LazyRow(
+            contentPadding = PaddingValues(start = 20.dp, end = 20.dp, bottom = 18.dp),
+            horizontalArrangement = Arrangement.spacedBy(9.dp)
+        ) {
+            item {
+                Box(
+                    Modifier.width(112.dp).height(200.dp).clip(RoundedCornerShape(20.dp))
+                        .background(Color(0xFFF5F4F2)).border(1.dp, Color(0xFFD8D8D8), RoundedCornerShape(20.dp))
+                        .clickable { },
+                    contentAlignment = Alignment.Center
+                ) {
+                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                        Box(Modifier.size(52.dp).clip(CircleShape).background(Color(0xFFE4E8E4)),
+                            contentAlignment = Alignment.Center) {
+                            Text("+", color = Verde, fontSize = 34.sp, fontWeight = FontWeight.Light)
+                        }
+                        Spacer(Modifier.height(12.dp))
+                        Text("Adicionar\nstatus", color = Texto, fontSize = 14.sp,
+                            fontWeight = FontWeight.SemiBold, textAlign = androidx.compose.ui.text.style.TextAlign.Center)
+                    }
+                }
+            }
+            items(midiasSalvas) { media ->
+                Box(
+                    Modifier.width(112.dp).height(200.dp).clip(RoundedCornerShape(20.dp))
+                        .background(Color(0xFF34434A)),
+                    contentAlignment = Alignment.BottomStart
+                ) {
+                    Column(Modifier.fillMaxWidth().padding(10.dp)) {
+                        Text(if (media.isVideo) "▶ Vídeo salvo" else "Foto salva",
+                            color = Color.White, fontSize = 13.sp, fontWeight = FontWeight.SemiBold,
+                            maxLines = 2, overflow = TextOverflow.Ellipsis)
+                    }
+                }
+            }
+        }
+        Text("Atualizações recentes", Modifier.padding(start = 20.dp, top = 2.dp, bottom = 8.dp),
+            color = Texto, fontSize = 20.sp, fontWeight = FontWeight.Bold)
+        if (midiasSalvas.isEmpty()) {
+            Text(
+                "Os status arquivados aparecerão aqui quando forem importados da pasta de status do WhatsApp.",
+                Modifier.padding(horizontal = 20.dp, vertical = 8.dp),
+                color = Cinza, fontSize = 14.sp
+            )
+        } else {
+            Text(
+                "\${midiasSalvas.size} mídia(s) de status arquivada(s). A identificação do contato ainda não é fornecida pela importação atual.",
+                Modifier.padding(horizontal = 20.dp, vertical = 4.dp),
+                color = Cinza, fontSize = 13.sp
+            )
         }
     }
 }
